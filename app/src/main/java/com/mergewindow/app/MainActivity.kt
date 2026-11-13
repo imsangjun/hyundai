@@ -76,7 +76,7 @@ class MainActivity : Activity() {
                         scenario = it
                         observationAt = if (it == Scenario.STALE) -1 else SystemClock.elapsedRealtime()
                     }
-                    "actual" -> virtualTurn = value != "true"
+                    "actual" -> { virtualTurn = value != "true"; if (!virtualTurn && scenario.twoBlocks) scenario = Scenario.CLEAR }
                     "direction" -> runCatching { TurnDirection.valueOf(value) }.getOrNull()?.let { demoDirection = it }
                     "offline" -> { offlineDemo = value == "true"; connect() }
                     "start" -> if (!offlineDemo) source?.requestExampleRoute()
@@ -113,11 +113,19 @@ class MainActivity : Activity() {
         val active = parked && displayRoute.connected && displayRoute.active && GuidanceEngine.fresh(displayRoute.stateAt,now,GuidanceEngine.ROUTE_TTL_MS)
         val tbtFresh = active && GuidanceEngine.fresh(route.tbtAt,now,GuidanceEngine.ROUTE_TTL_MS)
         val useVirtual = offlineDemo || virtualTurn
-        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,observationAt,now,parked,demoDirection)
+        val twoBlocks = scenario.twoBlocks && useVirtual
+        val blocks = if (twoBlocks) BlockTraffic.demo(observationAt) else null
+        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,observationAt,now,parked,demoDirection,blocks)
         val json = JSONObject().apply {
             put("connected",route.connected); put("active",active); put("parked",parked)
             put("offline",offlineDemo); put("virtual",useVirtual); put("scenario",scenario.name)
             put("demoDirection",demoDirection.name)
+            put("twoBlocks",twoBlocks)
+            put("blockLength",blocks?.blockLength ?: JSONObject.NULL)
+            put("intersectionBuffer",blocks?.intersectionBuffer ?: JSONObject.NULL)
+            put("preparationBlock",advice.preparationBlock?.name ?: JSONObject.NULL)
+            put("currentLow",if (advice.preparationBlock != null) blocks?.currentLow else JSONObject.NULL)
+            put("currentHigh",if (advice.preparationBlock != null) blocks?.currentHigh else JSONObject.NULL)
             put("destination",if(active) displayRoute.destination else "목적지를 설정해 주세요")
             put("turnType",if(active && useVirtual) "TURN_${demoDirection.name}" else if(tbtFresh) route.turnType else "")
             put("turnMeters",if(active && useVirtual) scenario.virtualDistance else if(tbtFresh && route.turnMeters?.isFinite() == true && route.turnMeters!! >= 0) route.turnMeters else JSONObject.NULL)
