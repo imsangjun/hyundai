@@ -47,7 +47,7 @@ class PleosRouteSource(context: Context, private val changed: (RouteSnapshot, Li
         override fun onRouteStateInfo(routeStateInfo: RouteStateInfo) {
             val active = routeStateInfo.naviMode == NaviMode.ROUTE_GUIDING || routeStateInfo.naviMode == NaviMode.SIMULATION_GUIDING
             receive("onRouteStateInfo") {
-                it.copy(active = active, mode = routeStateInfo.naviMode.name, stateAt = SystemClock.elapsedRealtime(),
+                it.copy(active = active, mode = if (!active && it.mode.startsWith("경로 요청 오류")) it.mode else routeStateInfo.naviMode.name, stateAt = SystemClock.elapsedRealtime(),
                     tbtAt = if (active) it.tbtAt else -1, turnMeters = if (active) it.turnMeters else null)
             }
         }
@@ -59,7 +59,13 @@ class PleosRouteSource(context: Context, private val changed: (RouteSnapshot, Li
             }
         }
         override fun onDestinationInfo(destinationInfo: DestinationInfo) {
-            receive("onDestinationInfo") { it.copy(destination = destinationInfo.name.ifBlank { "이름 없는 목적지" }) }
+            receive("onDestinationInfo") { it.copy(destination = destinationInfo.name.ifBlank { "이름 없는 목적지" },
+                destinationLatitude = destinationInfo.latitude, destinationLongitude = destinationInfo.longitude) }
+        }
+        override fun onCurrentLocationInfo(currentLocationInfo: CurrentLocationInfo) {
+            receive("onCurrentLocationInfo") { it.copy(latitude = currentLocationInfo.latitude,
+                longitude = currentLocationInfo.longitude, heading = currentLocationInfo.heading,
+                locationAt = SystemClock.elapsedRealtime()) }
         }
         override fun onTBTInfo(tbtInfo: List<TBTInfo>) {
             // Use the next instruction in the SDK's ordered list, not a later right turn.
@@ -67,11 +73,12 @@ class PleosRouteSource(context: Context, private val changed: (RouteSnapshot, Li
             receive("onTBTInfo(${tbtInfo.size})") {
                 it.copy(rightTurn = next?.type == TurnType.TURN_RIGHT || next?.type == TurnType.TURN_SHARP_R,
                     turnMeters = next?.distance, tbtAt = if (next == null) -1 else SystemClock.elapsedRealtime(),
-                    tbtDescription = next?.let { t -> "${t.type.name} · ${t.distance.toInt()} m · ${t.description}" } ?: "다음 회전 없음")
+                    tbtDescription = next?.let { t -> "${t.type.name} · ${t.distance.toInt()} m · ${t.description}" } ?: "다음 회전 없음",
+                    turnType = next?.type?.name.orEmpty(), turnLabel = next?.description.orEmpty())
             }
         }
         override fun onError(errorCode: NaviErrorCode) {
-            receive("onError:${errorCode.name}") { it.copy(active = false, tbtAt = -1, turnMeters = null, mode = "경로 요청 오류") }
+            receive("onError:${errorCode.name}") { it.copy(active = false, tbtAt = -1, turnMeters = null, mode = "경로 요청 오류:${errorCode.name}") }
         }
     }
 
@@ -119,6 +126,7 @@ class PleosRouteSource(context: Context, private val changed: (RouteSnapshot, Li
     fun requestExampleRoute() {
         if (closed || !registered) return
         try {
+            receive("경로 요청") { it.copy(mode = "경로 요청 중") }
             helper.requestRoute(RouteInfo(latitude = 37.48544722, longitude = 127.03636666,
                 displayLongitude = null, displayLatitude = null, poiName = "42dot",
                 poiId = "36khp37hh8gqcm5nqhe5", poiSubId = "0", address = "서울시 강남구 남부순환로 2621"))

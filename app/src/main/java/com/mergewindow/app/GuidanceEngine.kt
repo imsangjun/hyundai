@@ -21,7 +21,15 @@ data class RouteSnapshot(
     val tbtAt: Long = -1,
     val tbtDescription: String = "회전 정보 미수신",
     val receivedEvents: Int = 0,
-    val lastEvent: String = "연결 대기"
+    val lastEvent: String = "연결 대기",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val heading: Double = 0.0,
+    val locationAt: Long = -1,
+    val destinationLatitude: Double? = null,
+    val destinationLongitude: Double? = null,
+    val turnType: String = "",
+    val turnLabel: String = ""
 )
 data class Advice(val state: AdviceState, val title: String, val detail: String,
     val distance: Int? = null, val lower: Int? = null, val upper: Int? = null, val prepareAt: Int? = null)

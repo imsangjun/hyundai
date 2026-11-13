@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>MergeWindow 내비게이션</title>
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="navigation.css">
+  <script defer src="vendor/leaflet.js"></script>
+  <script defer src="navigation.js"></script>
+</head>
+<body>
+  <main aria-label="MergeWindow 내비게이션">
+    <div id="map" aria-label="실제 지형과 무관한 오프라인 시연 지도"></div>
+    <div class="map-shade"></div>
+    <div class="topline"><span class="wordmark">merge<span>window</span></span><span id="connection" class="connection">연결 중</span></div>
+    <section class="guidance-stack" aria-label="회전 및 준비 안내">
+      <div class="turn-card">
+        <div class="turn-row"><span id="turn-arrow" class="turn-arrow" aria-hidden="true">↗</span><div><div id="turn-distance" class="turn-distance">안내 대기</div><div id="turn-label" class="turn-label">목적지를 설정해 주세요</div></div></div>
+        <div class="turn-footer"><span id="turn-source">Pleos 경로 연동</span><span class="live-dot"></span></div>
+      </div>
+      <button id="advisory" class="advisory" hidden aria-label="준비 안내 상세 보기">
+        <div class="advice-kicker"><span class="spark">✦</span> 차로 준비 안내 <span class="demo-tag">가상 혼잡</span></div>
+        <strong id="advice-title"></strong>
+        <p id="advice-short"></p>
+        <div class="lane-strip" aria-label="가상 차로 안내"><span>↑</span><span>↑</span><span class="right-lane">↱<i></i><i></i><i></i></span><small>시연 차로</small></div>
+        <span class="details-link">안내 근거 보기 <b>›</b></span>
+      </button>
+      <div id="normal-chip" class="normal-chip" hidden><i></i><span>추가 준비 안내 없음</span></div>
+    </section>
+    <div class="tools" aria-label="지도 조작">
+      <button id="settings" aria-label="시연 설정 열기" title="시연 설정">⚙<small>시연 설정</small></button>
+      <div class="zoom-tools"><button id="zoom-in" aria-label="지도 확대">＋</button><button id="zoom-out" aria-label="지도 축소">−</button></div>
+      <button id="recenter" aria-label="시연 위치로 이동">◎<small>시연 위치</small></button>
+    </div>
+    <div id="map-status" class="map-status offline-badge" role="status">오프라인 시연 지도 · 실제 지형 아님</div>
+    <section class="trip-card" aria-label="목적지">
+      <div class="destination-icon">⚑</div><div class="trip-copy"><span class="eyebrow">목적지</span><strong id="destination">목적지를 설정해 주세요</strong><span id="route-status">Pleos에서 경로를 시작할 수 있어요</span></div>
+      <button id="route-action" class="primary">경로 설정 <span>›</span></button>
+    </section>
+    <div class="demo-caption">정차 시연 <span>·</span> <span id="data-caption">혼잡 데이터는 가상입니다</span></div>
+    <div id="lock" class="lock" hidden><strong>정차 후 사용할 수 있어요</strong><span>차량 상태를 확인하고 있습니다.</span></div>
+  </main>
+  <div id="scrim" class="scrim" hidden></div>
+  <aside id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-label="시연 설정">
+    <header><div><span class="eyebrow">MERGEWINDOW LAB</span><h1>시연 설정</h1></div><button class="close" aria-label="설정 닫기">×</button></header>
+    <p class="muted">지도 화면은 그대로 두고, 우회전 차로의 혼잡만 바꿔 보세요.</p>
+    <label class="switch-row"><div><strong>오프라인 시연</strong><small>지도·경로·혼잡을 모두 가상 데이터로 표시합니다.</small></div><input id="offline-demo" type="checkbox" role="switch" checked></label>
+    <h2>혼잡 상황</h2>
+    <div class="scenarios">
+      <button data-scenario="CLEAR"><span>원활</span><small>준비 안내 없음</small></button>
+      <button data-scenario="CONGESTED"><span>혼잡</span><small>미리 준비할 구간</small></button>
+      <button data-scenario="UNCERTAIN"><span>관측 부족</span><small>정확한 후미 미표시</small></button>
+      <button data-scenario="STALE"><span>데이터 만료</span><small>새 관측 대기</small></button>
+      <button data-scenario="MISSED"><span>진입 기회 상실</span><small>무리한 변경 회피</small></button>
+    </div>
+    <label class="switch-row"><div><strong>실제 다음 회전 사용</strong><small>끄면 가상 우회전 거리로 시연합니다.</small></div><input id="actual-turn" type="checkbox" role="switch"></label>
+    <h2>테스트 경로</h2><button id="start-example" class="destination-choice"><span>⚑</span><div><strong>42dot</strong><small>서울 강남구 남부순환로 2621 · Pleos 실제 요청</small></div><b>›</b></button>
+    <div class="minor-actions"><button id="cancel-route">경로 종료</button><button id="reconnect">Pleos 재연결</button></div>
+    <details><summary>연결 상태 및 수신 기록</summary><p id="diagnostics"></p><pre id="events"></pre></details>
+    <p class="footnote">지도는 앱에 포함된 가상 도로입니다. 외부 지도 요청이나 실제 위치 조회를 하지 않습니다. 오프라인 시연을 끄면 Pleos의 실제 경로·TBT를 연결할 수 있으며, 실제 경로 탐색은 Pleos 서비스의 통신이 필요할 수 있습니다. 지도와 혼잡은 계속 가상입니다.</p>
+  </aside>
+  <aside id="explanation" class="explanation" hidden role="dialog" aria-modal="true" aria-label="준비 안내 근거">
+    <header><div><span class="eyebrow">차로 준비 안내</span><h1 id="explain-title"></h1></div><button class="close" aria-label="안내 닫기">×</button></header>
+    <p id="explain-detail"></p><div id="explain-numbers" class="explain-numbers"></div>
+    <p class="footnote">가상 대기열 범위에 150 m의 시연 준비 여유를 더했습니다. 보정된 확률 예측이나 차선 변경 허가를 뜻하지 않습니다.</p>
+  </aside>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>
