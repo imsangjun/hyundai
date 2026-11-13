@@ -36,4 +36,28 @@ class GuidanceEngineTest {
         val a=check(Scenario.CONGESTED,parked=false)
         assertEquals(AdviceState.RESTRICTED,a.state); assertNull(a.distance); assertNull(a.lower)
     }
+    @Test fun leftAndRightUseIdenticalPreparationBoundaries() {
+        for (direction in TurnDirection.entries) {
+            for (type in if(direction==TurnDirection.LEFT) listOf("TURN_LEFT","TURN_SHARP_L") else listOf("TURN_RIGHT","TURN_SHARP_R")) {
+                for ((distance,expected) in listOf(671.0 to AdviceState.NORMAL,670.0 to AdviceState.PREPARE,521.0 to AdviceState.PREPARE,520.0 to AdviceState.ALTERNATIVE)) {
+                    val r=live.copy(rightTurn=false,turnType=type,turnMeters=distance)
+                    val advice=check(Scenario.CONGESTED,r,false)
+                    assertEquals("$type at $distance",expected,advice.state)
+                    assertEquals(670,advice.prepareAt)
+                    if(expected==AdviceState.PREPARE)assertTrue(advice.title.contains(direction.lane))
+                }
+            }
+            val demo=GuidanceEngine.evaluate(live,Scenario.CONGESTED,true,now,now,true,direction)
+            assertTrue(demo.title.contains(direction.lane))
+            val uncertain=GuidanceEngine.evaluate(live,Scenario.UNCERTAIN,true,now,now,true,direction)
+            assertTrue(uncertain.title.contains(direction.label));assertNull(uncertain.prepareAt)
+            val expired=GuidanceEngine.evaluate(live,Scenario.STALE,true,now-12001,now,true,direction)
+            assertNull(expired.prepareAt)
+        }
+        // An explicit straight/U-turn instruction must override the legacy rightTurn flag.
+        for(type in listOf("TURN_STRAIGHT","TURN_UTURN")) {
+            val advice=check(Scenario.CONGESTED,live.copy(turnType=type),false)
+            assertEquals(AdviceState.NORMAL,advice.state);assertNull(advice.prepareAt)
+        }
+    }
 }

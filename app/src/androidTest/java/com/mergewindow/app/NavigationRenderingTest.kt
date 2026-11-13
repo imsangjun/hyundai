@@ -33,6 +33,7 @@ class NavigationRenderingTest {
                         JSON.stringify({
                             connection:document.getElementById('connection')?.textContent,
                             marker:!!document.querySelector('.vehicle'),
+                            preparation:document.querySelector('.preparation-label')?.textContent,
                             mapLoaded:!!document.querySelector('.offline-map-image')?.naturalWidth,
                             tiles:document.querySelectorAll('.leaflet-tile').length,
                             externalImages:[...document.images].filter(i=>new URL(i.src).host!=='mergewindow.local').length,
@@ -51,6 +52,7 @@ class NavigationRenderingTest {
             }
             assertEquals("오프라인 시연",seen.optString("connection"))
             assertTrue("Fictional demo vehicle is visible",seen.optBoolean("marker"))
+            assertTrue("Clear scenario preparation marker is 120 + 150 m before turn",seen.optString("preparation").contains("교차로 전 270 m"))
             assertTrue("Packaged SVG must load in Android WebView",seen.optBoolean("mapLoaded"))
             assertEquals("No remote map tiles",0,seen.optInt("tiles"))
             assertEquals("All images are local",0,seen.optInt("externalImages"))

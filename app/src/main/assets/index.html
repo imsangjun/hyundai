@@ -24,7 +24,7 @@
         <div class="advice-kicker"><span class="spark">✦</span> 차로 준비 안내 <span class="demo-tag">가상 혼잡</span></div>
         <strong id="advice-title"></strong>
         <p id="advice-short"></p>
-        <div class="lane-strip" aria-label="가상 차로 안내"><span>↑</span><span>↑</span><span class="right-lane">↱<i></i><i></i><i></i></span><small>시연 차로</small></div>
+        <div class="lane-strip" aria-label="가상 차로 안내"><span id="lane-left">↑<i></i><i></i><i></i></span><span>↑</span><span id="lane-right">↱<i></i><i></i><i></i></span><small>시연 차로</small></div>
         <span class="details-link">안내 근거 보기 <b>›</b></span>
       </button>
       <div id="normal-chip" class="normal-chip" hidden><i></i><span>추가 준비 안내 없음</span></div>
@@ -45,8 +45,13 @@
   <div id="scrim" class="scrim" hidden></div>
   <aside id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-label="시연 설정">
     <header><div><span class="eyebrow">MERGEWINDOW LAB</span><h1>시연 설정</h1></div><button class="close" aria-label="설정 닫기">×</button></header>
-    <p class="muted">지도 화면은 그대로 두고, 우회전 차로의 혼잡만 바꿔 보세요.</p>
+    <p class="muted">회전 방향과 차로 혼잡을 바꾸고, 지도에서 준비 예상 지점을 확인하세요.</p>
     <label class="switch-row"><div><strong>오프라인 시연</strong><small>지도·경로·혼잡을 모두 가상 데이터로 표시합니다.</small></div><input id="offline-demo" type="checkbox" role="switch" checked></label>
+    <h2>시연 회전 방향</h2>
+    <div class="directions" aria-label="시연 회전 방향">
+      <button data-direction="LEFT" aria-pressed="false">↰ 좌회전</button>
+      <button data-direction="RIGHT" aria-pressed="true">↱ 우회전</button>
+    </div>
     <h2>혼잡 상황</h2>
     <div class="scenarios">
       <button data-scenario="CLEAR"><span>원활</span><small>준비 안내 없음</small></button>

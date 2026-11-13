@@ -20,6 +20,7 @@ class MainActivity : Activity() {
     private var scenario = Scenario.CLEAR
     private var virtualTurn = true
     private var offlineDemo = true
+    private var demoDirection = TurnDirection.RIGHT
     private var parked = false
     private var started = false
     private var ready = false
@@ -33,6 +34,7 @@ class MainActivity : Activity() {
         scenario = savedInstanceState?.getString("scenario")?.let { runCatching { Scenario.valueOf(it) }.getOrNull() } ?: Scenario.CLEAR
         virtualTurn = savedInstanceState?.getBoolean("virtualTurn",true) ?: true
         offlineDemo = savedInstanceState?.getBoolean("offlineDemo",true) ?: true
+        demoDirection = savedInstanceState?.getString("demoDirection")?.let { runCatching { TurnDirection.valueOf(it) }.getOrNull() } ?: TurnDirection.RIGHT
         web = WebView(this)
         web.setBackgroundColor(android.graphics.Color.rgb(232,237,232))
         web.settings.apply {
@@ -75,6 +77,7 @@ class MainActivity : Activity() {
                         observationAt = if (it == Scenario.STALE) -1 else SystemClock.elapsedRealtime()
                     }
                     "actual" -> virtualTurn = value != "true"
+                    "direction" -> runCatching { TurnDirection.valueOf(value) }.getOrNull()?.let { demoDirection = it }
                     "offline" -> { offlineDemo = value == "true"; connect() }
                     "start" -> if (!offlineDemo) source?.requestExampleRoute()
                     "cancel" -> if (!offlineDemo) source?.cancelRoute()
@@ -110,14 +113,15 @@ class MainActivity : Activity() {
         val active = parked && displayRoute.connected && displayRoute.active && GuidanceEngine.fresh(displayRoute.stateAt,now,GuidanceEngine.ROUTE_TTL_MS)
         val tbtFresh = active && GuidanceEngine.fresh(route.tbtAt,now,GuidanceEngine.ROUTE_TTL_MS)
         val useVirtual = offlineDemo || virtualTurn
-        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,observationAt,now,parked)
+        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,observationAt,now,parked,demoDirection)
         val json = JSONObject().apply {
             put("connected",route.connected); put("active",active); put("parked",parked)
             put("offline",offlineDemo); put("virtual",useVirtual); put("scenario",scenario.name)
+            put("demoDirection",demoDirection.name)
             put("destination",if(active) displayRoute.destination else "목적지를 설정해 주세요")
-            put("turnType",if(active && useVirtual) "TURN_RIGHT" else if(tbtFresh) route.turnType else "")
+            put("turnType",if(active && useVirtual) "TURN_${demoDirection.name}" else if(tbtFresh) route.turnType else "")
             put("turnMeters",if(active && useVirtual) scenario.virtualDistance else if(tbtFresh && route.turnMeters?.isFinite() == true && route.turnMeters!! >= 0) route.turnMeters else JSONObject.NULL)
-            put("turnLabel",if(active && useVirtual) "한빛로 우회전 · 가상 구간" else if(tbtFresh) route.turnLabel else "")
+            put("turnLabel",if(active && useVirtual) "한빛로 ${demoDirection.label} · 가상 구간" else if(tbtFresh) route.turnLabel else "")
             put("state",advice.state.name); put("title",advice.title); put("detail",advice.detail)
             put("low",advice.lower ?: JSONObject.NULL); put("high",advice.upper ?: JSONObject.NULL)
             put("prepareAt",advice.prepareAt ?: JSONObject.NULL)
@@ -128,6 +132,7 @@ class MainActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("scenario",scenario.name); outState.putBoolean("virtualTurn",virtualTurn)
         outState.putBoolean("offlineDemo",offlineDemo); super.onSaveInstanceState(outState)
+        outState.putString("demoDirection",demoDirection.name)
     }
     override fun onStop() {
         started = false; handler.removeCallbacksAndMessages(null)
