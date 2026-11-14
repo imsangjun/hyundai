@@ -17,6 +17,8 @@ class MainActivity : Activity() {
     private var source: PleosRouteSource? = null
     private var gate: DrivingGate? = null
     private var route = RouteSnapshot()
+    private var v2xEnabled = false
+    private var v2x = V2xSimulation()
     private var scenario = Scenario.CLEAR
     private var virtualTurn = true
     private var offlineDemo = true
@@ -72,13 +74,22 @@ class MainActivity : Activity() {
             handler.post {
                 if (!started || !parked) return@post
                 when(name) {
+                    "v2x" -> {
+                        v2xEnabled = value == "true"
+                        if (v2xEnabled) { offlineDemo = true; virtualTurn = true; scenario = Scenario.BOTH_BLOCKS; v2x = V2xSimulation(); connect() }
+                    }
+                    "v2xHops" -> value.toIntOrNull()?.takeIf { it in 1..4 }?.let { v2x.maxHops = it }
+                    "v2xLoss" -> v2x.lossPercent = if (value == "true") 100 else 0
+                    "v2xPause" -> v2x.paused = value == "true"
+                    "v2xClear" -> { v2x.nextClear = value == "true"; scenario = if (v2x.nextClear) Scenario.NEXT_BLOCK_CLEAR else Scenario.BOTH_BLOCKS }
+
                     "scenario" -> runCatching { Scenario.valueOf(value) }.getOrNull()?.let {
-                        scenario = it
+                        v2xEnabled = false; scenario = it
                         observationAt = if (it == Scenario.STALE) -1 else SystemClock.elapsedRealtime()
                     }
-                    "actual" -> { virtualTurn = value != "true"; if (!virtualTurn && scenario.twoBlocks) scenario = Scenario.CLEAR }
+                    "actual" -> { v2xEnabled = false; virtualTurn = value != "true"; if (!virtualTurn && scenario.twoBlocks) scenario = Scenario.CLEAR }
                     "direction" -> runCatching { TurnDirection.valueOf(value) }.getOrNull()?.let { demoDirection = it }
-                    "offline" -> { offlineDemo = value == "true"; connect() }
+                    "offline" -> { v2xEnabled = false; offlineDemo = value == "true"; connect() }
                     "start" -> if (!offlineDemo) source?.requestExampleRoute()
                     "cancel" -> if (!offlineDemo) source?.cancelRoute()
                     "reconnect" -> connect()
@@ -100,6 +111,7 @@ class MainActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             if (!started) return
+            if (v2xEnabled) { v2x.direction = demoDirection; v2x.tick(SystemClock.elapsedRealtime()) }
             if (scenario != Scenario.STALE) observationAt = SystemClock.elapsedRealtime()
             render(); handler.postDelayed(this,1000)
         }
@@ -114,9 +126,15 @@ class MainActivity : Activity() {
         val tbtFresh = active && GuidanceEngine.fresh(route.tbtAt,now,GuidanceEngine.ROUTE_TTL_MS)
         val useVirtual = offlineDemo || virtualTurn
         val twoBlocks = scenario.twoBlocks && useVirtual
-        val blocks = if (twoBlocks) BlockTraffic.demo(observationAt) else null
-        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,observationAt,now,parked,demoDirection,blocks)
+        val receivedQueue = if (v2xEnabled) v2x.estimate(1, now) else null
+        val currentQueue = if (v2xEnabled) v2x.estimate(0, now) else null
+        val blocks = if (twoBlocks) BlockTraffic.demo(observationAt).let {
+            if (currentQueue != null) it.copy(currentLow=currentQueue.low,currentHigh=currentQueue.high,currentObservedAt=currentQueue.observedAt) else it
+        } else null
+        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,receivedQueue?.observedAt ?: observationAt,now,parked,demoDirection,blocks,receivedQueue)
         val json = JSONObject().apply {
+            put("v2x",v2xEnabled); put("v2xStatus",if (v2xEnabled) v2x.status(now) else "")
+            put("v2xHops",v2x.maxHops); put("v2xPause",v2x.paused); put("v2xLoss",v2x.lossPercent == 100); put("v2xClear",v2x.nextClear)
             put("connected",route.connected); put("active",active); put("parked",parked)
             put("offline",offlineDemo); put("virtual",useVirtual); put("scenario",scenario.name)
             put("demoDirection",demoDirection.name)

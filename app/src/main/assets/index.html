@@ -49,6 +49,16 @@
     <header><div><span class="eyebrow">MERGEWINDOW LAB</span><h1>시연 설정</h1></div><button class="close" aria-label="설정 닫기">×</button></header>
     <p class="muted">회전 방향과 차로 혼잡을 바꾸고, 지도에서 준비 예상 지점을 확인하세요.</p>
     <label class="switch-row"><div><strong>오프라인 시연</strong><small>지도·경로·혼잡을 모두 가상 데이터로 표시합니다.</small></div><input id="offline-demo" type="checkbox" role="switch" checked></label>
+    <h2>차량 간 관측 공유</h2>
+    <label class="switch-row"><div><strong>V2V 네트워크 시연</strong><small>5G NR-V2X PC5 가정 · 가상 위치와 카메라 인식 결과</small></div><input id="v2x-enabled" type="checkbox"></label>
+    <div id="v2x-controls" hidden>
+      <label class="switch-row">최대 전달 횟수<select id="v2x-hops"><option value="1">1 홉</option><option value="2">2 홉</option><option value="3">3 홉</option><option value="4" selected>4 홉</option></select></label>
+      <label class="switch-row">다음 블록 원활<input id="v2x-clear" type="checkbox"></label>
+      <label class="switch-row">발신 중지<input id="v2x-pause" type="checkbox"></label>
+      <label class="switch-row">통신 단절<input id="v2x-loss" type="checkbox"></label>
+      <pre id="v2x-status" aria-live="polite"></pre>
+      <p class="footnote">관측 2대 이상 · 12초 유효기간. 중계 차량 수는 관측 수에 더하지 않습니다. 실제 무선 및 카메라 처리 성능은 검증하지 않은 시연입니다.</p>
+    </div>
     <h2>시연 회전 방향</h2>
     <div class="directions" aria-label="시연 회전 방향">
       <button data-direction="LEFT" aria-pressed="false">↰ 좌회전</button>

@@ -39,6 +39,9 @@ document.querySelectorAll('.close').forEach(b=>b.onclick=closePanels);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanels()});
 document.querySelectorAll('[data-scenario]').forEach(b=>b.onclick=()=>{send('scenario',b.dataset.scenario);closePanels()});
 document.querySelectorAll('[data-direction]').forEach(b=>b.onclick=()=>{send('direction',b.dataset.direction);closePanels()});
+$('v2x-enabled').onchange=e=>send('v2x',e.target.checked);
+$('v2x-hops').onchange=e=>send('v2xHops',e.target.value);
+for(const [id,action] of [['v2x-clear','v2xClear'],['v2x-pause','v2xPause'],['v2x-loss','v2xLoss']]) $(id).onchange=e=>send(action,e.target.checked);
 $('actual-turn').onchange=e=>send('actual',e.target.checked);
 $('offline-demo').onchange=e=>send('offline',e.target.checked);
 $('start-example').onclick=()=>{send('start');closePanels();toast('Pleos에서 42dot 경로를 찾고 있어요')};
@@ -117,6 +120,14 @@ function turn(type){
   return ['↑','다음 안내'];
 }
 function render(){
+  $('v2x-enabled').checked=!!state.v2x;
+  $('v2x-controls').hidden=!state.v2x;
+  $('v2x-status').textContent=state.v2xStatus||'';
+  $('v2x-hops').value=String(state.v2xHops||4);
+  $('v2x-clear').checked=!!state.v2xClear;
+  $('v2x-pause').checked=!!state.v2xPause;
+  $('v2x-loss').checked=!!state.v2xLoss;
+  document.querySelector('.demo-tag').textContent=state.v2x?'V2V 가상 관측':'가상 혼잡';
   $('connection').textContent=state.offline?'오프라인 시연':state.connected?'Pleos 연결됨':'Pleos 연결 중';
   $('destination').textContent=state.destination;
   const routeFailed=(state.mode||'').startsWith('경로 요청 오류');
@@ -142,7 +153,7 @@ function render(){
   const captions={PREPARE:`앞쪽 ${turnName()} 차로에 대기열이 예상돼요.`,CAUTION:'관측이 부족해 후미 위치를 표시하지 않아요.',EXPIRED:'새 혼잡 정보를 기다리고 있어요.',ALTERNATIVE:'지나쳤다면 기존 경로에서 다음 길을 확인하세요.'};
   $('advice-short').textContent=state.preparationBlock && state.state!=='ALTERNATIVE'?(state.preparationBlock==='CURRENT'?'다음 블록의 준비 여유가 부족해 이번 대기열 앞에서 준비해요.':'이번 교차로를 직진한 뒤, 다음 블록의 준비 지점을 확인하세요.'):(captions[state.state]||'');
   $('block-comparison').hidden=!blockRoute;
-  $('next-block-status').textContent=state.scenario==='NEXT_BLOCK_CLEAR'?'원활':'혼잡';
+  $('next-block-status').textContent=state.v2x?(state.high==null?'관측 부족':state.high<=120?'원활':'혼잡'):state.scenario==='NEXT_BLOCK_CLEAR'?'원활':'혼잡';
   document.querySelector('.lane-strip').hidden=state.high==null;
   for(const [id,selected,glyph] of [['lane-left',isLeft(),'↰'],['lane-right',!isLeft(),'↱']]){
     const lane=$(id);lane.classList.toggle('turn-lane',selected);lane.firstChild.textContent=selected?(blockRoute?'↑'+glyph:glyph):'↑';
@@ -158,7 +169,7 @@ function render(){
   $('offline-demo').checked=state.offline;
   document.querySelectorAll('[data-scenario]').forEach(b=>{b.classList.toggle('selected',b.dataset.scenario===state.scenario);b.setAttribute('aria-pressed',String(b.dataset.scenario===state.scenario))});
   $('lock').hidden=state.parked;
-  document.querySelectorAll('button,input').forEach(b=>b.disabled=!state.parked);
+  document.querySelectorAll('button,input,select').forEach(b=>b.disabled=!state.parked);
   document.querySelectorAll('[data-direction]').forEach(b=>{b.disabled=!state.parked || !state.virtual;b.classList.toggle('selected',b.dataset.direction===state.demoDirection);b.setAttribute('aria-pressed',String(b.dataset.direction===state.demoDirection))});
   document.querySelectorAll('[data-block-scenario]').forEach(b=>b.disabled=!state.parked || !state.virtual);
   if(!state.parked)closePanels();

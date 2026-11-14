@@ -66,7 +66,7 @@ object GuidanceEngine {
 
     fun evaluate(route: RouteSnapshot, scenario: Scenario, virtualTurn: Boolean,
         observationAt: Long, now: Long, parked: Boolean, demoDirection: TurnDirection = TurnDirection.RIGHT,
-        blocks: BlockTraffic? = null): Advice {
+        blocks: BlockTraffic? = null, receivedQueue: QueueEstimate? = null): Advice {
         if (!parked) return Advice(AdviceState.RESTRICTED, "정차 후 시연하세요", "주행 중이거나 차량 제한 상태를 확인할 수 없어 시연 조작을 잠갔습니다.")
         if (!route.connected) return Advice(AdviceState.WAITING, "Pleos 연결 대기", "NaviHelper 연결 후 실제 경로 이벤트를 확인합니다.")
         if (!fresh(route.stateAt, now, ROUTE_TTL_MS)) return Advice(AdviceState.EXPIRED, "경로 상태를 확인 중입니다", "오래된 경로 정보로 준비 안내를 계속하지 않습니다.")
@@ -86,8 +86,8 @@ object GuidanceEngine {
             d.toInt()
         }
         if (!fresh(observationAt, now, OBSERVATION_TTL_MS)) return Advice(AdviceState.EXPIRED, "혼잡 정보가 만료되었습니다", "새 관측을 기다립니다. 대기열 위치와 준비 거리는 표시하지 않습니다.", distance)
-        val lower = scenario.low
-        val upper = scenario.high
+        val lower = if (receivedQueue != null) receivedQueue.low else scenario.low
+        val upper = if (receivedQueue != null) receivedQueue.high else scenario.high
         if (lower == null || upper == null) return Advice(AdviceState.CAUTION, "${direction!!.label} 차로 혼잡 가능성", "관측이 부족합니다. 정확한 대기열 후미는 알 수 없습니다.", distance)
         if (scenario.twoBlocks) return evaluateBlocks(direction!!,distance,lower,upper,blocks,now)
         val prepare = upper + PREPARATION_MARGIN_METERS
