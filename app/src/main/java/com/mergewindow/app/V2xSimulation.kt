@@ -7,7 +7,8 @@ import kotlin.random.Random
 /** Application messages over a simulated NR-V2X PC5 transport. All coordinates are fictional route meters. */
 data class CameraQueue(val block: Int, val lane: TurnDirection, val low: Int, val high: Int, val confidence: Double)
 data class VehicleObservation(val origin: String, val sequence: Long, val observedAt: Long,
-    val routeId: String, val positionMeters: Int, val speedMps: Double, val camera: CameraQueue?)
+    val routeId: String, val positionMeters: Int, val speedMps: Double?, val camera: CameraQueue?,
+    val visionState: String = "SIMULATED", val vehicleCount: Int = 0)
 data class V2xPacket(val observation: VehicleObservation, val path: List<String>)
 data class QueueEstimate(val low: Int?, val high: Int?, val observedAt: Long, val sources: Int = 0)
 
@@ -18,7 +19,7 @@ class V2xNode(val id: String, val position: Int) {
         val observation = packet.observation
         if (!GuidanceEngine.fresh(observation.observedAt, now, GuidanceEngine.OBSERVATION_TTL_MS) ||
             observation.routeId != "demo-route" || id in packet.path ||
-            observation.speedMps !in 0.0..70.0 || observation.positionMeters !in 0..1000) return false
+            (observation.speedMps != null && observation.speedMps !in 0.0..70.0) || observation.positionMeters !in 0..1000) return false
         val camera = observation.camera
         if (camera != null && (camera.block !in 0..1 || camera.low < 0 || camera.high < camera.low ||
                 camera.high > 500 || camera.confidence !in 0.0..1.0)) return false
@@ -47,6 +48,7 @@ class V2xSimulation {
     var paused = false
     var nextClear = false
     var direction = TurnDirection.RIGHT
+    var syntheticSources = true
     var transmitted = 0; private set
     var delivered = 0; private set
     var dropped = 0; private set
@@ -55,6 +57,11 @@ class V2xSimulation {
     private val random = Random(42)
     private data class Delivery(val at: Long, val target: V2xNode, val packet: V2xPacket)
     private val pending = PriorityQueue<Delivery>(compareBy { it.at })
+
+    fun publishVideo(nodeId: String, observation: VehicleObservation, now: Long) {
+        val sender = nodes.first { it.id == nodeId }
+        if (!paused) broadcast(sender, V2xPacket(observation, listOf(nodeId)), now)
+    }
 
     private fun broadcast(sender: V2xNode, packet: V2xPacket, at: Long) {
         if (packet.path.size - 1 >= maxHops.coerceIn(1, 4)) return
@@ -73,7 +80,7 @@ class V2xSimulation {
                 broadcast(delivery.target, delivery.target.received.getValue(delivery.packet.observation.origin), delivery.at)
             }
         }
-        if (paused || (lastPublished >= 0 && now - lastPublished < 3000)) return
+        if (!syntheticSources || paused || (lastPublished >= 0 && now - lastPublished < 3000)) return
         lastPublished = now
         sequence++
         nodes.forEachIndexed { index, node ->
@@ -93,7 +100,11 @@ class V2xSimulation {
         val packets = nodes.first().received.values.filter {
             GuidanceEngine.fresh(it.observation.observedAt, now, GuidanceEngine.OBSERVATION_TTL_MS)
         }
-        val paths = packets.joinToString("\n") { "${it.path.joinToString(" → ")} · ${(now-it.observation.observedAt)/1000}s" }
+        val paths = packets.joinToString("\n") {
+            val vision = if (it.observation.visionState == "SIMULATED") "" else
+                " · 차량 ${it.observation.vehicleCount}대 · ${it.observation.visionState}"
+            "${it.path.joinToString(" → ")} · ${(now-it.observation.observedAt)/1000}s$vision"
+        }
         return "5G NR-V2X PC5 가정 · 가상 차량 5대\n송신 $transmitted · 수신 $delivered · 손실 $dropped\n내 차량의 유효 출처 ${packets.size}대 / 최대 $maxHops 홉\n$paths"
     }
 }

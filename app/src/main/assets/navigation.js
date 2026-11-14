@@ -39,6 +39,7 @@ document.querySelectorAll('.close').forEach(b=>b.onclick=closePanels);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanels()});
 document.querySelectorAll('[data-scenario]').forEach(b=>b.onclick=()=>{send('scenario',b.dataset.scenario);closePanels()});
 document.querySelectorAll('[data-direction]').forEach(b=>b.onclick=()=>{send('direction',b.dataset.direction);closePanels()});
+$('video-replay').onclick=()=>send('videoReplay');
 $('v2x-enabled').onchange=e=>send('v2x',e.target.checked);
 $('v2x-hops').onchange=e=>send('v2xHops',e.target.value);
 for(const [id,action] of [['v2x-clear','v2xClear'],['v2x-pause','v2xPause'],['v2x-loss','v2xLoss']]) $(id).onchange=e=>send(action,e.target.checked);
@@ -120,6 +121,7 @@ function turn(type){
   return ['↑','다음 안내'];
 }
 function render(){
+  $('video-message').textContent=state.videoMessage||'';
   $('v2x-enabled').checked=!!state.v2x;
   $('v2x-controls').hidden=!state.v2x;
   $('v2x-status').textContent=state.v2xStatus||'';
@@ -127,7 +129,7 @@ function render(){
   $('v2x-clear').checked=!!state.v2xClear;
   $('v2x-pause').checked=!!state.v2xPause;
   $('v2x-loss').checked=!!state.v2xLoss;
-  document.querySelector('.demo-tag').textContent=state.v2x?'V2V 가상 관측':'가상 혼잡';
+  document.querySelector('.demo-tag').textContent=state.videoReplay?'YOLO 영상 관측':state.v2x?'V2V 가상 관측':'가상 혼잡';
   $('connection').textContent=state.offline?'오프라인 시연':state.connected?'Pleos 연결됨':'Pleos 연결 중';
   $('destination').textContent=state.destination;
   const routeFailed=(state.mode||'').startsWith('경로 요청 오류');
@@ -146,13 +148,14 @@ function render(){
   $('turn-label').textContent=blockRoute?'이번 교차로 직진':state.active?(state.turnLabel || label):routeFailed?'경로를 찾지 못했습니다':'목적지를 설정해 주세요';
   $('following-turn').hidden=!blockRoute;
   $('following-turn').textContent=blockRoute?`그다음 ${state.blockLength} m ${glyph} ${turnName()} · 현재부터 ${state.turnMeters} m`:'';
-  $('turn-source').textContent=state.offline?'오프라인 · 지도 / 경로 / 혼잡 가상':state.active?(state.virtual?`Pleos 경로 활성 · ${turnName()} 시연`:'Pleos 실제 회전 · 지도 / 혼잡 가상'):'Pleos 경로와 함께 시작됩니다';
+  $('turn-source').textContent=state.videoReplay?'YOLO 영상 관측 · 가상 경로':state.offline?'오프라인 · 지도 / 경로 / 혼잡 가상':state.active?(state.virtual?`Pleos 경로 활성 · ${turnName()} 시연`:'Pleos 실제 회전 · 지도 / 혼잡 가상'):'Pleos 경로와 함께 시작됩니다';
   const show=state.active && (state.preparationBlock || ['PREPARE','CAUTION','EXPIRED','ALTERNATIVE'].includes(state.state));
   $('advisory').hidden=!show;$('advisory').className='advisory '+state.state.toLowerCase()+(state.preparationBlock==='NEXT'?' defer':'');
   $('advice-title').textContent=state.title;
   const captions={PREPARE:`앞쪽 ${turnName()} 차로에 대기열이 예상돼요.`,CAUTION:'관측이 부족해 후미 위치를 표시하지 않아요.',EXPIRED:'새 혼잡 정보를 기다리고 있어요.',ALTERNATIVE:'지나쳤다면 기존 경로에서 다음 길을 확인하세요.'};
   $('advice-short').textContent=state.preparationBlock && state.state!=='ALTERNATIVE'?(state.preparationBlock==='CURRENT'?'다음 블록의 준비 여유가 부족해 이번 대기열 앞에서 준비해요.':'이번 교차로를 직진한 뒤, 다음 블록의 준비 지점을 확인하세요.'):(captions[state.state]||'');
   $('block-comparison').hidden=!blockRoute;
+  $('current-block-status').textContent=state.videoReplay && state.currentHigh==null?'관측 부족':'혼잡';
   $('next-block-status').textContent=state.v2x?(state.high==null?'관측 부족':state.high<=120?'원활':'혼잡'):state.scenario==='NEXT_BLOCK_CLEAR'?'원활':'혼잡';
   document.querySelector('.lane-strip').hidden=state.high==null;
   for(const [id,selected,glyph] of [['lane-left',isLeft(),'↰'],['lane-right',!isLeft(),'↱']]){
@@ -162,7 +165,7 @@ function render(){
   $('normal-chip').querySelector('span').textContent=state.state==='WAITING'?'다음 회전 정보 확인 중':'추가 준비 안내 없음';
   $('explain-title').textContent=state.title;$('explain-detail').textContent=state.detail;
   $('explain-numbers').textContent=state.low!=null?(state.preparationBlock?`블록 간 ${state.blockLength} m · 이번 후미 ${state.currentLow}–${state.currentHigh} m · 다음 후미 ${state.low}–${state.high} m · ${state.preparationBlock==='CURRENT'?'이번':'다음'} 블록에서 준비 · 목표 회전 전 ${state.prepareAt} m`:`가상 대기열 ${state.low}–${state.high} m · 시연 준비 기준 ${state.prepareAt} m`):'';
-  $('data-caption').textContent=state.offline?'지도·경로·혼잡은 모두 가상입니다':state.virtual?'지도·회전 거리·혼잡은 가상입니다':'회전 정보는 Pleos · 지도·혼잡은 가상입니다';
+  $('data-caption').textContent=state.videoReplay?'YOLO 영상 관측 · 지도와 V2V 통신은 가상':state.offline?'지도·경로·혼잡은 모두 가상입니다':state.virtual?'지도·회전 거리·혼잡은 가상입니다':'회전 정보는 Pleos · 지도·혼잡은 가상입니다';
   $('diagnostics').textContent=`${state.mode} · ${state.eventCount}건 수신`;
   $('events').textContent=(state.events||[]).join('\n');
   $('actual-turn').checked=!state.virtual;
@@ -173,6 +176,7 @@ function render(){
   document.querySelectorAll('[data-direction]').forEach(b=>{b.disabled=!state.parked || !state.virtual;b.classList.toggle('selected',b.dataset.direction===state.demoDirection);b.setAttribute('aria-pressed',String(b.dataset.direction===state.demoDirection))});
   document.querySelectorAll('[data-block-scenario]').forEach(b=>b.disabled=!state.parked || !state.virtual);
   if(!state.parked)closePanels();
+  $('v2x-clear').disabled=!state.parked || !!state.videoReplay;
   $('actual-turn').disabled=!state.parked || state.offline;
   $('start-example').disabled=!state.parked || state.offline || !state.connected;
   $('cancel-route').disabled=!state.parked || state.offline || !state.active;

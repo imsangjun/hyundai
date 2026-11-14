@@ -18,6 +18,8 @@ class MainActivity : Activity() {
     private var gate: DrivingGate? = null
     private var route = RouteSnapshot()
     private var v2xEnabled = false
+    private var videoReplay: VideoReplay? = null
+    private var videoMessage = ""
     private var v2x = V2xSimulation()
     private var scenario = Scenario.CLEAR
     private var virtualTurn = true
@@ -74,7 +76,9 @@ class MainActivity : Activity() {
             handler.post {
                 if (!started || !parked) return@post
                 when(name) {
+                    "videoReplay" -> startVideoReplay()
                     "v2x" -> {
+                        videoReplay = null; videoMessage = ""
                         v2xEnabled = value == "true"
                         if (v2xEnabled) { offlineDemo = true; virtualTurn = true; scenario = Scenario.BOTH_BLOCKS; v2x = V2xSimulation(); connect() }
                     }
@@ -84,12 +88,13 @@ class MainActivity : Activity() {
                     "v2xClear" -> { v2x.nextClear = value == "true"; scenario = if (v2x.nextClear) Scenario.NEXT_BLOCK_CLEAR else Scenario.BOTH_BLOCKS }
 
                     "scenario" -> runCatching { Scenario.valueOf(value) }.getOrNull()?.let {
+                        videoReplay = null; videoMessage = ""
                         v2xEnabled = false; scenario = it
                         observationAt = if (it == Scenario.STALE) -1 else SystemClock.elapsedRealtime()
                     }
-                    "actual" -> { v2xEnabled = false; virtualTurn = value != "true"; if (!virtualTurn && scenario.twoBlocks) scenario = Scenario.CLEAR }
+                    "actual" -> { videoReplay = null; videoMessage = ""; v2xEnabled = false; virtualTurn = value != "true"; if (!virtualTurn && scenario.twoBlocks) scenario = Scenario.CLEAR }
                     "direction" -> runCatching { TurnDirection.valueOf(value) }.getOrNull()?.let { demoDirection = it }
-                    "offline" -> { v2xEnabled = false; offlineDemo = value == "true"; connect() }
+                    "offline" -> { videoReplay = null; videoMessage = ""; v2xEnabled = false; offlineDemo = value == "true"; connect() }
                     "start" -> if (!offlineDemo) source?.requestExampleRoute()
                     "cancel" -> if (!offlineDemo) source?.cancelRoute()
                     "reconnect" -> connect()
@@ -103,6 +108,21 @@ class MainActivity : Activity() {
         gate = DrivingGate(this) { allowed -> runOnUiThread { parked = allowed; render() } }
         connect(); handler.post(tick)
     }
+    private fun startVideoReplay() {
+        try {
+            val file = java.io.File(filesDir,"vision-replay.json")
+            require(file.isFile && file.length() in 1..2_000_000)
+            val replay = VideoReplay(file.readText(),SystemClock.elapsedRealtime())
+            v2x = V2xSimulation().apply { syntheticSources = false }
+            videoReplay = replay; v2xEnabled = true
+            offlineDemo = true; virtualTurn = true; scenario = Scenario.BOTH_BLOCKS
+            videoMessage = "YOLO 녹화 영상 관측 재생 · 지도와 통신은 가상"
+            connect()
+        } catch (_: Exception) {
+            videoReplay = null; v2xEnabled = false; scenario = Scenario.UNCERTAIN
+            videoMessage = "영상 분석 파일을 읽을 수 없습니다. Run-Vision.ps1로 분석·설치해 주세요."
+        }
+    }
     private fun connect() {
         source?.close(); route = RouteSnapshot(); events = emptyList()
         source = if (offlineDemo) null else PleosRouteSource(this) { next, history -> route = next; events = history; render() }.also { it.start() }
@@ -111,7 +131,10 @@ class MainActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             if (!started) return
-            if (v2xEnabled) { v2x.direction = demoDirection; v2x.tick(SystemClock.elapsedRealtime()) }
+            if (v2xEnabled) {
+                videoReplay?.tick(SystemClock.elapsedRealtime(),v2x)
+                v2x.direction = demoDirection; v2x.tick(SystemClock.elapsedRealtime())
+            }
             if (scenario != Scenario.STALE) observationAt = SystemClock.elapsedRealtime()
             render(); handler.postDelayed(this,1000)
         }
@@ -131,8 +154,13 @@ class MainActivity : Activity() {
         val blocks = if (twoBlocks) BlockTraffic.demo(observationAt).let {
             if (currentQueue != null) it.copy(currentLow=currentQueue.low,currentHigh=currentQueue.high,currentObservedAt=currentQueue.observedAt) else it
         } else null
-        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,receivedQueue?.observedAt ?: observationAt,now,parked,demoDirection,blocks,receivedQueue)
+        val advice = GuidanceEngine.evaluate(displayRoute,scenario,useVirtual,receivedQueue?.observedAt ?: observationAt,now,parked,demoDirection,blocks,receivedQueue).let {
+            if (videoReplay != null && v2xEnabled && it.state == AdviceState.CAUTION) it.copy(
+                title="영상 관측을 확인 중입니다", detail="블록·차로 보정과 유효한 독립 관측 2대가 필요합니다. 관측 상태는 시연 설정에서 확인하세요.") else it
+        }
         val json = JSONObject().apply {
+            put("videoReplay",videoReplay != null && v2xEnabled)
+            put("videoMessage",videoMessage + if (videoReplay?.finished == true) " · 재생 끝, 관측 만료 대기" else "")
             put("v2x",v2xEnabled); put("v2xStatus",if (v2xEnabled) v2x.status(now) else "")
             put("v2xHops",v2x.maxHops); put("v2xPause",v2x.paused); put("v2xLoss",v2x.lossPercent == 100); put("v2xClear",v2x.nextClear)
             put("connected",route.connected); put("active",active); put("parked",parked)
