@@ -59,4 +59,26 @@ class VideoReplayTest {
         entries.getJSONObject(1).put("origin",entries.getJSONObject(0).getString("origin"))
         assertThrows(IllegalArgumentException::class.java) { VideoReplay(json.toString(),0) }
     }
+
+    @Test fun visualDensityRelaysButCannotInventMetricQueue() {
+        val json = fixture()
+        val entries = json.getJSONArray("observations")
+        for (i in 0 until entries.length()) {
+            val record = entries.getJSONObject(i)
+            record.put("visionState","DENSE_TRAFFIC_CANDIDATE")
+            record.put("camera",JSONObject.NULL)
+            record.getJSONArray("laneObservations").getJSONObject(0)
+                .put("state","DENSE_TRAFFIC_CANDIDATE")
+        }
+        val network = V2xSimulation().apply { syntheticSources=false }
+        val replay = VideoReplay(json.toString(),1000)
+        replay.tick(1000,network); network.tick(1500)
+        assertTrue(network.status(1500).contains("차량 밀집 후보 · 속도 미확인"))
+        assertNull(network.estimate(0,1500).low)
+        assertNull(network.estimate(1,1500).high)
+        entries.getJSONObject(0).put("camera",JSONObject().apply {
+            put("block",0); put("lane","RIGHT"); put("low",100); put("high",120); put("confidence",0.9)
+        })
+        assertThrows(IllegalArgumentException::class.java) { VideoReplay(json.toString(),1000) }
+    }
 }

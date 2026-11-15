@@ -29,7 +29,7 @@ class VideoReplay(text: String, private val startedAt: Long) {
             val count = o.getInt("vehicleCount")
             require(offset in 0..3_600_000 && offset >= lastTime && count in 0..1000)
             require(node in listOf("V1", "V2", "V3", "V4") && origin.matches(Regex("video-[a-f0-9]{64}")))
-            require(state in listOf("INSUFFICIENT_DATA", "VEHICLES_DETECTED", "OBSERVING", "LOW_SPEED_QUEUE", "FLOWING_OBSERVED"))
+            require(state in listOf("INSUFFICIENT_DATA", "VEHICLES_DETECTED", "OBSERVING", "LOW_SPEED_QUEUE", "FLOWING_OBSERVED", "DENSE_TRAFFIC_CANDIDATE"))
             val previous = origins[origin]
             require(sequence > (previous?.second ?: 0) && (previous == null || previous.first == node))
             require(nodes[node] == null || nodes[node] == origin)
@@ -56,6 +56,7 @@ class VideoReplay(text: String, private val startedAt: Long) {
                     "OBSERVING" -> "관측 중"
                     "LOW_SPEED_QUEUE" -> "저속 대기열"
                     "FLOWING_OBSERVED" -> "진행 관측"
+                    "DENSE_TRAFFIC_CANDIDATE" -> "차량 밀집 후보 · 속도 미확인"
                     else -> throw IllegalArgumentException("Unknown lane state")
                 }
                 val laneLabel = when(id) { "EGO" -> "내 차로"; "UNKNOWN" -> "차로 미확정"; else -> id }

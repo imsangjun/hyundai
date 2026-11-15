@@ -1,0 +1,264 @@
+{
+  "method": "Assistant visual annotations on raw frames; small purposive sample, not independent benchmark ground truth",
+  "engine": "yolop",
+  "imgsz": 640,
+  "samples": 19,
+  "assigned": 5,
+  "correct": 5,
+  "wrong": 0,
+  "unknown": 11,
+  "missedVehicle": 3,
+  "assignmentCoverage": 0.2631578947368421,
+  "conditionalAccuracy": 1.0,
+  "exactLaneSamples": 0,
+  "exactLaneCorrect": 0,
+  "rows": [
+    {
+      "source": "kitti",
+      "time": 0,
+      "point": [
+        565,
+        208
+      ],
+      "expected": "EGO",
+      "predicted": "EGO",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "EGO",
+      "correct": true
+    },
+    {
+      "source": "kitti",
+      "time": 0,
+      "point": [
+        456,
+        227
+      ],
+      "expected": "OTHER",
+      "predicted": "LEFT_1",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "OTHER",
+      "correct": true
+    },
+    {
+      "source": "kitti",
+      "time": 3,
+      "point": [
+        556,
+        210
+      ],
+      "expected": "EGO",
+      "predicted": "EGO",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "EGO",
+      "correct": true
+    },
+    {
+      "source": "kitti",
+      "time": 3,
+      "point": [
+        485,
+        231
+      ],
+      "expected": "OTHER",
+      "predicted": "LEFT_1",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "OTHER",
+      "correct": true
+    },
+    {
+      "source": "kitti",
+      "time": 6,
+      "point": [
+        603,
+        247
+      ],
+      "expected": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 6,
+      "point": [
+        405,
+        276
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 6,
+      "point": [
+        940,
+        352
+      ],
+      "expected": "OTHER",
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 9,
+      "point": [
+        661,
+        274
+      ],
+      "expected": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 9,
+      "point": [
+        337,
+        354
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 12,
+      "point": [
+        835,
+        273
+      ],
+      "expected": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 12,
+      "point": [
+        709,
+        228
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "kitti",
+      "time": 15,
+      "point": [
+        606,
+        244
+      ],
+      "expected": "EGO",
+      "predicted": "EGO",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "EGO",
+      "correct": true
+    },
+    {
+      "source": "kitti",
+      "time": 15,
+      "point": [
+        310,
+        271
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 0,
+      "point": [
+        930,
+        694
+      ],
+      "expected": "EGO",
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 0,
+      "point": [
+        640,
+        790
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 0,
+      "point": [
+        300,
+        930
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 5,
+      "point": [
+        985,
+        685
+      ],
+      "expected": "EGO",
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 5,
+      "point": [
+        695,
+        770
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    },
+    {
+      "source": "continuous",
+      "time": 5,
+      "point": [
+        485,
+        830
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false
+    }
+  ]
+}

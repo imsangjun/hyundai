@@ -9,7 +9,7 @@
 .\Run-Vision.ps1 -Video 'C:\videos\driving.mp4' -Seconds 60 -InstallReplay
 ```
 
-앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 YOLO11n과 공식 YOLOP ONNX 가중치를 다운로드한다. YOLOP 실행에는 기존 OpenCV DNN을 사용한다.
+앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 YOLO11n, 공식 YOLOP ONNX, UFLDv2 CULane ResNet18 가중치를 다운로드한다. UFLDv2 가중치는 약 825 MB다. YOLOP는 OpenCV DNN, UFLDv2는 PyTorch CPU로 실행한다. 모델 다운로드 외에 영상·위치를 외부로 전송하지 않는다.
 
 ```powershell
 # 거리/차로 보정 정보를 함께 사용
@@ -20,13 +20,15 @@
 
 ## 판단 로직
 
-YOLO11n은 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. YOLOP로 차선과 주행 가능 영역을 분할하고, 차선 중심을 위쪽으로 추적해 곡선을 맞춘다. 좌우 경계가 확인된 영역에 차량 상자 하단 중앙점을 대응한다. EGO는 내 차로, LEFT_1/RIGHT_1은 화면상 인접 차로, UNKNOWN은 차로 미확정이다. 이 표기는 도로의 영구 차로 ID나 회전 전용 여부를 뜻하지 않는다. 경계가 없는 곳, 차선 위, 화면 하단에 잘린 차량은 미확정으로 남긴다.
+YOLO11n은 입력 크기 960으로 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. UFLDv2가 차선 구조를 추정한다. 존재 점수 0.7, 유효 점 개수·곡선 잔차·교차·폭·범위 검사 후 경계를 사용한다. 내 차로 경계를 확보하지 못한 프레임은 YOLOP 차선·주행 가능 영역 분할로 대체한다. 이 점수는 실제 차로 정답 확률이 아니다. 누락 경계의 슬롯을 유지해 인접 차로 번호가 당겨지지 않게 한다. 좌우 경계가 확인된 영역에 차량 상자 하단 중앙점을 대응한다. EGO는 내 차로, LEFT_1/RIGHT_1은 화면상 인접 차로, UNKNOWN은 차로 미확정이다. 이 표기는 도로의 영구 차로 ID나 회전 전용 여부를 뜻하지 않는다. 경계가 없는 곳, 차선 위, 화면 하단에 잘린 차량은 미확정으로 남긴다.
 
 보정된 지면 좌표의 전방 거리 변화율에 같은 시간의 자차 속도를 더해 차량 종방향 속도를 추정한다. 이 모델은 직선·국소 평면 도로와 정합된 카메라 자세를 전제로 한다. BoT-SORT의 영상 흔들림 보정 자체가 실제 미터 단위 자차 이동 보정은 아니다. 회전·경사·피칭에서는 시간별 보정이 필요하다.
 
 같은 차로에서 속도 5 km/h 이하인 차량 3대 이상이 15 m 이하 간격으로 이어지고, 그 상태가 5초 지속되면 LOW_SPEED_QUEUE로 기록한다. 신호 대기도 포함하는 저속 대기열이며 신호 원인 분류는 구현하지 않았다. 속도 15 km/h 이상인 차량 3대 이상이 5초 유지되면 FLOWING_OBSERVED다. 문턱값은 검증 전의 초기 설정이다.
 
 대기열의 후미가 보이고 거리 보정이 유효할 때에만 교차로까지 거리에서 후미 차량까지 거리를 빼서 후미 구간을 만든다. 가려졌거나 보정이 없으면 camera=null이다. 원활 관측도 전체 해당 블록의 가시 범위가 확인된 경우에만 후미 0으로 전달한다. ‘검출 없음’을 원활로 바꾸지 않는다.
+
+속도 보정이 없어도 같은 확정 차로에서 신뢰도 0.5 이상인 추적 차량 3대가 영상상 가까이 이어지면 밀집 근거를 쌓는다. 하단 접점 간격이 두 상자 평균 높이의 1.5배 이하여야 한다. 최근 5초 이상·30회 이상 관측 중 80% 이상에서 조건을 만족하고 현재도 만족할 때 `DENSE_TRAFFIC_CANDIDATE`를 보낸다. 단위가 픽셀이므로 실제 차간 거리나 정체 확정이 아니다. 0.5초 초과 관측 단절·장면 전환은 이력을 초기화하고 UNKNOWN 차량을 모아 후보를 만들지 않는다. 이 후보는 camera=null이며 수치 안내를 만들지 않는다.
 
 ## 보정 JSON 계약
 
@@ -90,3 +92,10 @@ lane-analysis.json에는 매 관측 시점의 차량 상자, 추적 ID, 자동 �
 
 - YOLOP 공식 모델 및 코드 https://github.com/hustvl/YOLOP
 - 추가 실제 주행 영상 https://github.com/hustvl/YOLOP/blob/main/inference/videos/1.mp4
+
+## 2026-11-15 개선 검증
+
+최신 비교는 [IMPROVEMENT_RESULTS.md](IMPROVEMENT_RESULTS.md)에 기록했다. 기존 결과 문서는 YOLOP 단독 기준선이다. 개선된 혼잡 영상 재생 파일은 `verification/improvements/continuous/replay.json`이다. 앱 화면 검사는 이 파일을 설치한 뒤 실행한다.
+
+- UFLDv2 공식 소스·모델: https://github.com/cfzd/Ultra-Fast-Lane-Detection-v2
+- 추론부 MIT 고지: [THIRD_PARTY_UFLD_LICENSE.txt](THIRD_PARTY_UFLD_LICENSE.txt)

@@ -1,5 +1,6 @@
 """Reproducible limited visual audit. Unknown predictions count against coverage."""
 import json
+import argparse
 from pathlib import Path
 import cv2
 import analyze  # Apply the same local runtime settings before importing Ultralytics.
@@ -7,12 +8,19 @@ from ultralytics import YOLO
 from lanes import LaneDetector
 
 
-def run():
+def run(args):
     import torch
     torch.set_num_threads(4)
     cv2.setNumThreads(4)
-    labels = json.loads(Path("vision/lane-audit-labels.json").read_text())
-    lane_model = LaneDetector(".tools/vision-data/yolop-640-640.onnx")
+    labels = json.loads(Path(args.labels).read_text())
+    if args.engine == 'hybrid':
+        from structural_lanes import HybridLaneDetector
+        lane_model = HybridLaneDetector('.tools/vision-data/culane_res18.pth','.tools/vision-data/yolop-640-640.onnx')
+    elif args.engine == 'ufld':
+        from structural_lanes import StructuralLaneDetector
+        lane_model = StructuralLaneDetector('.tools/vision-data/culane_res18.pth')
+    else:
+        lane_model = LaneDetector(".tools/vision-data/yolop-640-640.onnx")
     vehicle_model = YOLO(".tools/vision-data/yolo11n.pt")
     frames, rows = {}, []
     for label in labels["vehicles"]:
@@ -24,7 +32,7 @@ def run():
             if not ok:
                 raise ValueError(f"Missing audit frame {key}")
             geometry = lane_model.detect(frame)
-            detection = vehicle_model.predict(frame,classes=[2,3,5,7],conf=.35,imgsz=640,device="cpu",verbose=False)[0]
+            detection = vehicle_model.predict(frame,classes=[2,3,5,7],conf=.35,imgsz=args.imgsz,device="cpu",verbose=False)[0]
             frames[key] = frame,geometry,detection.boxes.xyxy.cpu().tolist()
         frame,geometry,boxes = frames[key]
         x,y = label["point"]
@@ -35,27 +43,37 @@ def run():
         box = min(matches,key=lambda p:p[0])[1] if matches else None
         predicted = geometry.assign(((box[0]+box[2])/(2*w),box[3]/h)) if box else "MISSED_VEHICLE"
         coarse = predicted if predicted in ("EGO","UNKNOWN","MISSED_VEHICLE") else "OTHER"
-        rows.append({**label,"predicted":predicted,"coarsePrediction":coarse,"correct":coarse==label["expected"]})
+        side = geometry.side(((box[0]+box[2])/(2*w),box[3]/h)) if box and hasattr(geometry,'side') else 'UNKNOWN'
+        rows.append({**label,"predicted":predicted,"sideEvidence":side,"coarsePrediction":coarse,"correct":coarse==label["expected"]})
     known = [r for r in rows if r["coarsePrediction"] in ("EGO","OTHER")]
-    report = {"method":labels["method"],"samples":len(rows),"assigned":len(known),
+    exact = [r for r in rows if 'exact' in r]
+    report = {"method":labels["method"],"engine":args.engine,"imgsz":args.imgsz,"samples":len(rows),"assigned":len(known),
               "correct":sum(r["correct"] for r in rows),
               "wrong":sum(not r["correct"] for r in known),
               "unknown":sum(r["predicted"]=="UNKNOWN" for r in rows),
               "missedVehicle":sum(r["predicted"]=="MISSED_VEHICLE" for r in rows),
               "assignmentCoverage":len(known)/len(rows),
               "conditionalAccuracy":sum(r["correct"] for r in known)/len(known) if known else None,
+              "exactLaneSamples":len(exact),"exactLaneCorrect":sum(r['predicted']==r['exact'] for r in exact),
               "rows":rows,"queueReview":[]}
     for review in labels["queue_review"]:
-        frames_data = json.loads(Path(f"verification/lanes/{review['source']}/lane-analysis.json").read_text())
+        frames_data = json.loads(Path(f"{args.video_results}/{review['source']}/lane-analysis.json").read_text())
         window = [f for f in frames_data if review["from"]*1000 <= f["offsetMs"] <= review["to"]*1000]
         states = [lane["state"] for f in window for lane in f["lanes"] if lane["laneId"]==review["lane"]]
         confirmed = sum(s in ("LOW_SPEED_QUEUE","FLOWING_OBSERVED") for s in states)
         report["queueReview"].append({**review,"sampledFrames":len(window),"lanePresentFrames":len(states),
                                       "confirmedDecisions":confirmed,"states":sorted(set(states)),
                                       "verdict":"NOT_VALIDATED_NO_METRIC_GROUND_TRUTH"})
-    Path("verification/lanes/audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+    Path(args.output).parent.mkdir(parents=True,exist_ok=True)
+    Path(args.output).write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps({k:v for k,v in report.items() if k not in ("rows","queueReview")},indent=2))
 
 
 if __name__ == "__main__":
-    run()
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--engine',choices=['yolop','ufld','hybrid'],default='hybrid')
+    parser.add_argument('--imgsz',type=int,default=960)
+    parser.add_argument('--labels',default='vision/lane-audit-labels.json')
+    parser.add_argument('--output',default='verification/improvements/audit.json')
+    parser.add_argument('--video-results',default='verification/lanes')
+    run(parser.parse_args())

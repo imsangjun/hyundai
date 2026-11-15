@@ -31,6 +31,16 @@ if (-not $Replay) {
         }
         Move-Item -LiteralPath $download -Destination $laneModel
     }
+    $structuralModel = Join-Path $PSScriptRoot '.tools/vision-data/culane_res18.pth'
+    if (-not (Test-Path -LiteralPath $structuralModel)) {
+        $download = "$structuralModel.download"
+        & $python -m gdown 1oEjJraFr-3lxhX_OXduAGFWalWa6Xh3W -O $download
+        if ($LASTEXITCODE -ne 0) { throw 'UFLDv2 download failed.' }
+        if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne '956616371EE758551C455D28C1C8A9732B39D7FBD85BC70B9869424A5121F967') {
+            throw 'UFLDv2 model checksum differs from the verified official model.'
+        }
+        Move-Item -LiteralPath $download -Destination $structuralModel
+    }
     $analysisArgs = @('vision/analyze.py','--video',$Video,'--output',$Output,'--node',$Node,'--seconds',"$Seconds")
     if ($Config) { $analysisArgs += @('--config',$Config) }
     & $python @analysisArgs

@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 from traffic import QueueJudge, Track, longitudinal_speed
 from lanes import LaneDetector
+from visual_traffic import VisualDensityJudge
 
 
 def calibration_at(config, time):
@@ -74,8 +75,13 @@ def analyze(args):
         raise ValueError("Video could not be opened or FPS is unavailable")
     stride = max(1, round(fps / 10))
     model = YOLO(args.model)
-    lane_model = LaneDetector(args.lane_model)
+    if args.lane_engine == 'hybrid':
+        from structural_lanes import HybridLaneDetector
+        lane_model = HybridLaneDetector(args.structural_model,args.lane_model)
+    else:
+        lane_model = LaneDetector(args.lane_model)
     judges, previous, observations = {}, {}, []
+    visual_judges = {}
     lane_frames = []
     previous_scene = None
     frame_number, detected_frames, maximum_vehicles = 0, 0, 0
@@ -96,13 +102,13 @@ def analyze(args):
             cut = previous_scene is not None and np.mean(cv2.absdiff(scene,previous_scene)) > 45
             previous_scene = scene
             if cut:
-                previous.clear(); judges.clear()
+                previous.clear(); judges.clear(); visual_judges.clear()
                 if model.predictor is not None:
                     for tracker in getattr(model.predictor,"trackers",[]):
                         tracker.reset()
             geometry = lane_model.detect(frame)
             result = model.track(frame, persist=True, tracker="botsort.yaml", classes=[2, 3, 5, 7],
-                                 conf=0.35, imgsz=640, device=args.device, verbose=False)[0]
+                                 conf=0.35, imgsz=args.imgsz, device=args.device, verbose=False)[0]
             count = len(result.boxes)
             detected_frames += count > 0
             maximum_vehicles = max(maximum_vehicles, count)
@@ -112,7 +118,9 @@ def analyze(args):
             ids = result.boxes.id.int().cpu().tolist() if result.boxes.id is not None else [-1]*count
             for box, track_id, confidence in zip(result.boxes.xyxy.cpu().tolist(), ids, result.boxes.conf.cpu().tolist()):
                 point = ((box[0]+box[2])/(2*width),box[3]/height)
-                assignments.append(dict(id=track_id,box=box,confidence=confidence,laneId=geometry.assign(point)))
+                lane_id = geometry.assign(point)
+                side = geometry.side(point) if hasattr(geometry,'side') else 'UNKNOWN'
+                assignments.append(dict(id=track_id,box=box,confidence=confidence,laneId=lane_id,sideEvidence=side))
             lane_ids = sorted(set(a["laneId"] for a in assignments) | {"EGO"})
             metric_tracks = {lane: [] for lane in lane_ids}
             current = {}
@@ -146,26 +154,37 @@ def analyze(args):
                     lane_config = {**c,"tail_visible":False,"full_block_visible":False}
                 judge = judges.setdefault(lane, QueueJudge())
                 lane_state, lane_camera = judge.evaluate(time, metric_tracks[lane],lane_config)
+                visual_state = visual_judges.setdefault(lane,VisualDensityJudge()).evaluate(time,assignments,lane)
+                if lane_state == 'INSUFFICIENT_DATA' and visual_state == 'DENSE_TRAFFIC_CANDIDATE':
+                    lane_state = visual_state
                 lane_observations.append(dict(laneId=lane, vehicleCount=sum(a["laneId"]==lane for a in assignments),
                                               state=lane_state, speedAvailable=bool(metric_tracks[lane])))
                 if is_target:
                     state,camera = lane_state,lane_camera
+            if state in ('INSUFFICIENT_DATA','VEHICLES_DETECTED') and any(l['state']=='DENSE_TRAFFIC_CANDIDATE' for l in lane_observations):
+                state = 'DENSE_TRAFFIC_CANDIDATE'
             for missing_lane in set(judges)-set(lane_ids):
                 judges[missing_lane].evaluate(time,[],None)
+                visual_judges[missing_lane].evaluate(time,[],missing_lane)
             if time - last_emitted >= 0.9:
                 observations.append({"offsetMs": round(time * 1000), "origin": origin, "node": args.node,
                                      "sequence": len(observations) + 1, "visionState": state,
                                      "vehicleCount": count, "camera": camera, "laneObservations":lane_observations})
                 lane_frames.append(dict(offsetMs=round(time*1000), sceneCut=bool(cut), vehicles=assignments,
-                                        lanes=lane_observations, egoBoundariesFound=geometry.ego_pair is not None))
+                                        lanes=lane_observations, laneSource=getattr(geometry,'source','YOLOP'),
+                                        egoBoundariesFound=geometry.ego_pair is not None))
                 last_emitted = time
-            annotated = geometry.draw(result.plot())
+            annotated = geometry.draw(result.plot(labels=False,line_width=2))
             for assignment in assignments:
                 x1,y1,x2,y2 = assignment["box"]
-                cv2.putText(annotated,assignment["laneId"],(int(x1),min(height-5,int(y2)+16)),
+                label = f"#{assignment['id']} {assignment['laneId']} {assignment['confidence']:.2f}"
+                cv2.putText(annotated,label,(int(x1),min(height-5,int(y2)+16)),
                             cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,255),1)
             cv2.putText(annotated, f"{time:.1f}s  vehicles={count}  {state}", (10, 28),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            for i,lane in enumerate(lane_observations):
+                label = f"{lane['laneId']}: {lane['vehicleCount']} vehicles | {lane['state']}"
+                cv2.putText(annotated,label,(10,52+i*22),cv2.FONT_HERSHEY_SIMPLEX,.5,(0,255,255),1)
             if writer is None:
                 h, w = annotated.shape[:2]
                 writer = cv2.VideoWriter(str(output / "annotated.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), fps / stride, (w, h))
@@ -185,7 +204,8 @@ def analyze(args):
                "detectedFrames": detected_frames, "maximumVehicles": maximum_vehicles,
                "observations": len(observations), "metricObservations": sum(o["camera"] is not None for o in observations),
                "states": sorted(set(o["visionState"] for o in observations))}
-    summary["laneModel"] = "YOLOP 640 ONNX"
+    summary["laneModel"] = args.lane_engine
+    summary["vehicleImageSize"] = args.imgsz
     summary["assignedVehicleObservations"] = sum(a["laneId"] != "UNKNOWN" for f in lane_frames for a in f["vehicles"])
     summary["totalVehicleObservations"] = sum(len(f["vehicles"]) for f in lane_frames)
     (output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -200,6 +220,9 @@ if __name__ == "__main__":
     parser.add_argument("--node", choices=["V1", "V2", "V3", "V4"], default="V4")
     parser.add_argument("--model", default=".tools/vision-data/yolo11n.pt")
     parser.add_argument("--lane-model", default=".tools/vision-data/yolop-640-640.onnx")
+    parser.add_argument("--lane-engine", choices=['hybrid','yolop'],default='hybrid')
+    parser.add_argument("--structural-model",default='.tools/vision-data/culane_res18.pth')
+    parser.add_argument("--imgsz",type=int,choices=[640,960,1280],default=960)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seconds", type=float, default=60)
     args = parser.parse_args()

@@ -1,5 +1,7 @@
 # 자동 차로 인식 및 실제 영상 검증 결과
 
+> 이 문서는 개선 전 YOLOP 단독 기준선이다. 최신 비교와 현재 구현은 [IMPROVEMENT_RESULTS.md](IMPROVEMENT_RESULTS.md)를 참고한다.
+
 2026-11-15 기준, 자동 차선 분할과 차량 차로 배정을 구현했다. 실제 주행 영상에서 동작을 확인했지만 차로별 정체가 정확하다는 검증은 통과하지 못했다. 차량이 빽빽하게 늘어선 장면에서 차선 가림으로 배정률이 낮고, 동기화된 실제 속도와 거리 정답이 없다.
 
 ## 구현
@@ -46,9 +48,9 @@ KITTI 예제 0~3초의 내 차로는 육안상 차량 3대가 이어진 대기�
 ## 재현과 파일
 
 ```powershell
-.tools/vision-env/Scripts/python.exe vision/analyze.py --video .tools/vision-data/driving.mp4 --output verification/lanes/kitti --seconds 20
-.tools/vision-env/Scripts/python.exe vision/analyze.py --video .tools/vision-data/yolop-driving.mp4 --output verification/lanes/continuous --seconds 10
-.tools/vision-env/Scripts/python.exe vision/audit_lanes.py
+.tools/vision-env/Scripts/python.exe vision/analyze.py --video .tools/vision-data/driving.mp4 --output verification/lanes/kitti --seconds 20 --lane-engine yolop --imgsz 640
+.tools/vision-env/Scripts/python.exe vision/analyze.py --video .tools/vision-data/yolop-driving.mp4 --output verification/lanes/continuous --seconds 10 --lane-engine yolop --imgsz 640
+.tools/vision-env/Scripts/python.exe vision/audit_lanes.py --engine yolop --imgsz 640 --output verification/lanes/audit.json
 .tools/vision-env/Scripts/python.exe -m unittest discover -s vision -p 'test_*.py' -v
 .\Run-Vision.ps1 -Replay verification/lanes/kitti/replay.json -InstallReplay
 ```
