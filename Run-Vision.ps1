@@ -21,6 +21,16 @@ if (-not $Replay) {
     $env:UV_CACHE_DIR = Join-Path $PSScriptRoot '.tools/uv-cache'
     & uv pip install --python $python -r vision/requirements.txt
     if ($LASTEXITCODE -ne 0) { throw 'Dependency setup failed.' }
+    $laneModel = Join-Path $PSScriptRoot '.tools/vision-data/yolop-640-640.onnx'
+    if (-not (Test-Path -LiteralPath $laneModel)) {
+        New-Item -ItemType Directory -Force (Split-Path $laneModel) | Out-Null
+        $download = "$laneModel.download"
+        Invoke-WebRequest 'https://raw.githubusercontent.com/hustvl/YOLOP/main/weights/yolop-640-640.onnx' -OutFile $download
+        if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne 'CD66A3E0087A7258AE07768CC02CB742EED93865727AE4C9BAF969B8FA190696') {
+            throw 'YOLOP model checksum differs from the verified model.'
+        }
+        Move-Item -LiteralPath $download -Destination $laneModel
+    }
     $analysisArgs = @('vision/analyze.py','--video',$Video,'--output',$Output,'--node',$Node,'--seconds',"$Seconds")
     if ($Config) { $analysisArgs += @('--config',$Config) }
     & $python @analysisArgs

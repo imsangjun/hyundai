@@ -40,6 +40,7 @@ class VideoPlaybackRenderingTest {
             waitFor("state.videoReplay && state.v2xStatus.includes('V4 → V3 → V2 → V1 → EGO') && state.v2xStatus.includes('VEHICLES_DETECTED')")
             assertTrue(js("state.prepareAt === null && state.high === null") == "true")
             assertTrue(js("document.querySelector('.demo-tag').textContent === 'YOLO 영상 관측'") == "true")
+            assertTrue(js("state.v2xStatus.includes('내 차로') && state.v2xStatus.includes('판단 보류')") == "true")
         }
     }
 }

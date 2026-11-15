@@ -9,7 +9,7 @@
 .\Run-Vision.ps1 -Video 'C:\videos\driving.mp4' -Seconds 60 -InstallReplay
 ```
 
-앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 모델 가중치를 다운로드한다.
+앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 YOLO11n과 공식 YOLOP ONNX 가중치를 다운로드한다. YOLOP 실행에는 기존 OpenCV DNN을 사용한다.
 
 ```powershell
 # 거리/차로 보정 정보를 함께 사용
@@ -20,7 +20,7 @@
 
 ## 판단 로직
 
-YOLO11n은 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. 차량 지면 접점인 상자 하단 중앙을 정규화된 차로 다각형에 대응한다. 보정값이 없을 때 전체 영상의 차량 수를 기록하며 해당 차량을 내 차로 또는 정체 차량이라고 확정하지 않는다.
+YOLO11n은 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. YOLOP로 차선과 주행 가능 영역을 분할하고, 차선 중심을 위쪽으로 추적해 곡선을 맞춘다. 좌우 경계가 확인된 영역에 차량 상자 하단 중앙점을 대응한다. EGO는 내 차로, LEFT_1/RIGHT_1은 화면상 인접 차로, UNKNOWN은 차로 미확정이다. 이 표기는 도로의 영구 차로 ID나 회전 전용 여부를 뜻하지 않는다. 경계가 없는 곳, 차선 위, 화면 하단에 잘린 차량은 미확정으로 남긴다.
 
 보정된 지면 좌표의 전방 거리 변화율에 같은 시간의 자차 속도를 더해 차량 종방향 속도를 추정한다. 이 모델은 직선·국소 평면 도로와 정합된 카메라 자세를 전제로 한다. BoT-SORT의 영상 흔들림 보정 자체가 실제 미터 단위 자차 이동 보정은 아니다. 회전·경사·피칭에서는 시간별 보정이 필요하다.
 
@@ -39,7 +39,7 @@ YOLO11n은 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적�
     "time_s": 0.0,
     "image_points": [[0.3,0.9],[0.7,0.9],[0.55,0.5],[0.45,0.5]],
     "ground_points": [[-2,5],[2,5],[2,50],[-2,50]],
-    "lane_polygon": [[0.3,0.9],[0.7,0.9],[0.55,0.5],[0.45,0.5]],
+    "auto_lane": "EGO",
     "ego_mps": 5.0,
     "junction_m": 100.0,
     "error_m": 5.0,
@@ -52,9 +52,9 @@ YOLO11n은 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적�
 }
 ```
 
-image_points와 lane_polygon은 영상 너비·높이에 대한 0~1 좌표다. ground_points는 대응하는 지면의 (가로 m, 카메라 전방 m) 좌표다. junction_m은 해당 시각의 카메라에서 교차로까지 전방 거리다. block=0은 이번 블록, 1은 다음 블록이다. quality와 error_m은 검출 점수와 별개인 외부 보정 품질과 거리 오차다.
+image_points는 영상 너비·높이에 대한 0~1 좌표다. 차로 영역은 모델이 자동으로 인식한다. auto_lane은 실제 경로의 관심 차로에 대응시킬 카메라 상대 차로를 명시한다. ground_points는 대응하는 지면의 (가로 m, 카메라 전방 m) 좌표다. junction_m은 해당 시각의 카메라에서 교차로까지 전방 거리다. block=0은 이번 블록, 1은 다음 블록이다. quality와 error_m은 검출 점수와 별개인 외부 보정 품질과 거리 오차다.
 
-움직이는 카메라의 보정 샘플은 시각순으로 제공하고 0.5초가 지나면 사용하지 않는다. 시간별 차로 영역과 회전 방향도 외부 설정이다. 자동 차선 인식·GPS 차로 매칭·깊이 모델은 구현하지 않았다. 고정 카메라는 fixed_camera=true와 ego_mps=0으로 정적인 보정을 사용할 수 있다. 관측이 끊기거나 차로가 바뀌면 지속 시간 판정을 다시 시작한다.
+움직이는 카메라의 보정 샘플은 시각순으로 제공하고 0.5초가 지나면 사용하지 않는다. 회전 방향과 실제 경로 차로의 대응은 외부 설정이다. GPS 차로 매칭·깊이 모델은 구현하지 않았다. 자동 차선 인식만으로 실제 거리와 속도를 알 수 없으므로 미터 단위 보정과 자차 속도는 계속 필요하다. 고정 카메라는 fixed_camera=true와 ego_mps=0으로 정적인 보정을 사용할 수 있다. 관측이 끊기거나 차로가 바뀌면 지속 시간 판정을 다시 시작한다.
 
 ## V2V 연결
 
@@ -81,3 +81,12 @@ replay.json의 origin은 입력 영상 SHA-256이다. 한 영상의 차량 검�
 - Ultralytics 라이선스 https://www.ultralytics.com/license
 
 최종 확인에서 Python 판정 테스트 6개, Android 영상 재생·중계·안내 계약 테스트 3개가 통과했다. 공개 영상의 실제 분석 파일을 운전자 프로필 10에 설치해 화면 브리지까지 수신을 확인했다. 설치 스크립트는 현재 활성 운전자 프로필을 자동 조회한다. 기존 Kotlin 단위 테스트 19개 및 V2V 시연 화면 테스트도 통과했다.
+
+## 자동 차로 분석 결과
+
+lane-analysis.json에는 매 관측 시점의 차량 상자, 추적 ID, 자동 차로 배정, 차로별 차량 수·판단 상태가 담긴다. replay.json의 laneObservations로 이 결과를 V2V 중계하고 앱 수신 기록에서 확인할 수 있다. 구형 replay.json도 계속 읽는다. 모든 관측 차로에서 속도 보정이 있으면 대기열 상태를 계산하고, auto_lane으로 지정한 차로만 기존 회전 안내의 후미 구간에 대응한다.
+
+정확도 검증의 범위와 결과는 LANE_VALIDATION.md를 참고한다. 공개 영상에는 동기화된 자차 속도와 실제 거리 정답이 없어 실제 km/h 기반 정체 정확도는 아직 검증하지 못했다.
+
+- YOLOP 공식 모델 및 코드 https://github.com/hustvl/YOLOP
+- 추가 실제 주행 영상 https://github.com/hustvl/YOLOP/blob/main/inference/videos/1.mp4

@@ -8,7 +8,7 @@ import kotlin.random.Random
 data class CameraQueue(val block: Int, val lane: TurnDirection, val low: Int, val high: Int, val confidence: Double)
 data class VehicleObservation(val origin: String, val sequence: Long, val observedAt: Long,
     val routeId: String, val positionMeters: Int, val speedMps: Double?, val camera: CameraQueue?,
-    val visionState: String = "SIMULATED", val vehicleCount: Int = 0)
+    val visionState: String = "SIMULATED", val vehicleCount: Int = 0, val laneSummary: String = "")
 data class V2xPacket(val observation: VehicleObservation, val path: List<String>)
 data class QueueEstimate(val low: Int?, val high: Int?, val observedAt: Long, val sources: Int = 0)
 
@@ -102,7 +102,7 @@ class V2xSimulation {
         }
         val paths = packets.joinToString("\n") {
             val vision = if (it.observation.visionState == "SIMULATED") "" else
-                " · 차량 ${it.observation.vehicleCount}대 · ${it.observation.visionState}"
+                " · 차량 ${it.observation.vehicleCount}대 · ${it.observation.visionState}\n${it.observation.laneSummary}"
             "${it.path.joinToString(" → ")} · ${(now-it.observation.observedAt)/1000}s$vision"
         }
         return "5G NR-V2X PC5 가정 · 가상 차량 5대\n송신 $transmitted · 수신 $delivered · 손실 $dropped\n내 차량의 유효 출처 ${packets.size}대 / 최대 $maxHops 홉\n$paths"

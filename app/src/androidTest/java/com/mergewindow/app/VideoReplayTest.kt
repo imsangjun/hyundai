@@ -19,6 +19,9 @@ class VideoReplayTest {
                 put("node","V$node"); put("sequence",step+1)
                 put("visionState",if (clear) "FLOWING_OBSERVED" else "LOW_SPEED_QUEUE")
                 put("vehicleCount",3)
+                put("laneObservations",JSONArray().put(JSONObject().apply {
+                    put("laneId","EGO"); put("vehicleCount",3); put("state","LOW_SPEED_QUEUE")
+                }))
                 put("camera",JSONObject().apply {
                     put("block",if(current) 0 else 1); put("lane","RIGHT")
                     put("low",if(clear) 0 else if(current) 150 else 425)
@@ -42,6 +45,7 @@ class VideoReplayTest {
         }
         replay.tick(1000,network); network.tick(1500)
         assertEquals(PreparationBlock.CURRENT,advice(1500).preparationBlock)
+        assertTrue(network.status(1500).contains("내 차로 3대 저속 대기열"))
         replay.tick(3000,network); network.tick(3500)
         assertEquals(PreparationBlock.NEXT,advice(3500).preparationBlock)
         assertTrue(replay.finished)

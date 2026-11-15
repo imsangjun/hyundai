@@ -5,7 +5,7 @@ import org.json.JSONObject
 /** Finite offline playback. Video time is rebased once, never refreshed after end of file. */
 class VideoReplay(text: String, private val startedAt: Long) {
     private data class Record(val offset: Long, val node: String, val origin: String,
-        val sequence: Long, val state: String, val count: Int, val camera: CameraQueue?)
+        val sequence: Long, val state: String, val count: Int, val camera: CameraQueue?, val lanes: String)
     private val records: List<Record>
     private var cursor = 0
     val finished get() = cursor == records.size
@@ -43,7 +43,25 @@ class VideoReplay(text: String, private val startedAt: Long) {
                     require(it.block in 0..1 && it.low >= 0 && it.high in it.low..500 && it.confidence in 0.0..1.0)
                 }
             }
-            Record(offset,node,origin,sequence,state,count,camera)
+            val lanes = o.optJSONArray("laneObservations")
+            require(lanes == null || lanes.length() <= 12)
+            val laneSummary = if (lanes == null) "" else (0 until lanes.length()).joinToString(" / ") { i ->
+                val lane = lanes.getJSONObject(i)
+                val id = lane.getString("laneId")
+                val vehicles = lane.getInt("vehicleCount")
+                val laneState = lane.getString("state")
+                require(id.matches(Regex("EGO|UNKNOWN|LEFT_[1-9]|RIGHT_[1-9]")) && vehicles in 0..1000)
+                val stateLabel = when(laneState) {
+                    "INSUFFICIENT_DATA" -> "판단 보류"
+                    "OBSERVING" -> "관측 중"
+                    "LOW_SPEED_QUEUE" -> "저속 대기열"
+                    "FLOWING_OBSERVED" -> "진행 관측"
+                    else -> throw IllegalArgumentException("Unknown lane state")
+                }
+                val laneLabel = when(id) { "EGO" -> "내 차로"; "UNKNOWN" -> "차로 미확정"; else -> id }
+                "$laneLabel ${vehicles}대 $stateLabel"
+            }
+            Record(offset,node,origin,sequence,state,count,camera,laneSummary)
         }
     }
 
@@ -53,7 +71,7 @@ class VideoReplay(text: String, private val startedAt: Long) {
             val position = network.nodes.first { it.id == r.node }.position
             // The transport node position is a fictional topology, not video GPS.
             val observation = VehicleObservation(r.origin,r.sequence,startedAt+r.offset,"demo-route",position,
-                null,r.camera,r.state,r.count)
+                null,r.camera,r.state,r.count,r.lanes)
             network.publishVideo(r.node,observation,now)
         }
     }

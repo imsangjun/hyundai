@@ -6,12 +6,15 @@ import math
 import os
 from pathlib import Path
 
-os.environ.setdefault("YOLO_CONFIG_DIR", str(Path(__file__).resolve().parent.parent / ".tools/yolo-config"))
+config_directory = Path(__file__).resolve().parent.parent / ".tools/yolo-config"
+config_directory.mkdir(parents=True,exist_ok=True)
+os.environ.setdefault("YOLO_CONFIG_DIR", str(config_directory))
 os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 
 import cv2
 import numpy as np
 from traffic import QueueJudge, Track, longitudinal_speed
+from lanes import LaneDetector
 
 
 def calibration_at(config, time):
@@ -42,7 +45,7 @@ def validate_config(config):
             raise ValueError("Invalid lane/block")
         image = np.asarray(c["image_points"], dtype=np.float32)
         ground = np.asarray(c["ground_points"], dtype=np.float32)
-        polygon = np.asarray(c["lane_polygon"], dtype=np.float32)
+        polygon = np.asarray(c.get("lane_polygon", [[0,0],[1,0],[1,1],[0,1]]), dtype=np.float32)
         if image.shape != (4, 2) or ground.shape != (4, 2) or polygon.ndim != 2 or polygon.shape[1] != 2 or len(polygon) < 3:
             raise ValueError("Calibration needs four correspondences and a lane polygon")
         if not all(np.isfinite(a).all() for a in (image, ground, polygon)) or any(np.any(a < 0) or np.any(a > 1) for a in (image, polygon)):
@@ -52,7 +55,10 @@ def validate_config(config):
 
 
 def analyze(args):
+    import torch
     from ultralytics import YOLO, settings
+    torch.set_num_threads(4)
+    cv2.setNumThreads(4)
     settings.update({"sync": False})
     source = Path(args.video).resolve(strict=True)
     config = json.loads(Path(args.config).read_text(encoding="utf-8-sig")) if args.config else {}
@@ -68,7 +74,10 @@ def analyze(args):
         raise ValueError("Video could not be opened or FPS is unavailable")
     stride = max(1, round(fps / 10))
     model = YOLO(args.model)
-    judge, previous, observations = QueueJudge(), {}, []
+    lane_model = LaneDetector(args.lane_model)
+    judges, previous, observations = {}, {}, []
+    lane_frames = []
+    previous_scene = None
     frame_number, detected_frames, maximum_vehicles = 0, 0, 0
     writer = None
     last_emitted = -1.0
@@ -83,43 +92,78 @@ def analyze(args):
                 break
             if (frame_number - 1) % stride:
                 continue
+            scene = cv2.resize(cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY),(64,36))
+            cut = previous_scene is not None and np.mean(cv2.absdiff(scene,previous_scene)) > 45
+            previous_scene = scene
+            if cut:
+                previous.clear(); judges.clear()
+                if model.predictor is not None:
+                    for tracker in getattr(model.predictor,"trackers",[]):
+                        tracker.reset()
+            geometry = lane_model.detect(frame)
             result = model.track(frame, persist=True, tracker="botsort.yaml", classes=[2, 3, 5, 7],
                                  conf=0.35, imgsz=640, device=args.device, verbose=False)[0]
             count = len(result.boxes)
             detected_frames += count > 0
             maximum_vehicles = max(maximum_vehicles, count)
             c = calibration_at(config, time)
-            metric_tracks = []
+            assignments = []
+            height,width = frame.shape[:2]
+            ids = result.boxes.id.int().cpu().tolist() if result.boxes.id is not None else [-1]*count
+            for box, track_id, confidence in zip(result.boxes.xyxy.cpu().tolist(), ids, result.boxes.conf.cpu().tolist()):
+                point = ((box[0]+box[2])/(2*width),box[3]/height)
+                assignments.append(dict(id=track_id,box=box,confidence=confidence,laneId=geometry.assign(point)))
+            lane_ids = sorted(set(a["laneId"] for a in assignments) | {"EGO"})
+            metric_tracks = {lane: [] for lane in lane_ids}
             current = {}
             if c and result.boxes.id is not None:
                 matrix = cv2.getPerspectiveTransform(np.float32(c["image_points"]), np.float32(c["ground_points"]))
                 if not np.isfinite(matrix).all() or np.linalg.cond(matrix) > 1e8:
                     raise ValueError("Unstable calibration")
-                polygon = np.float32(c["lane_polygon"])
-                height, width = frame.shape[:2]
-                for box, track_id, confidence in zip(result.boxes.xyxy.cpu().tolist(), result.boxes.id.int().cpu().tolist(), result.boxes.conf.cpu().tolist()):
+                for assignment in assignments:
+                    box,track_id,confidence = assignment["box"],assignment["id"],assignment["confidence"]
+                    lane_id = assignment["laneId"]
                     point = ((box[0] + box[2]) / (2 * width), box[3] / height)
-                    if cv2.pointPolygonTest(polygon, point, False) < 0:
+                    if lane_id == "UNKNOWN" or track_id < 0:
                         continue
                     projected = cv2.perspectiveTransform(np.float32([[point]]), matrix)[0, 0]
                     distance = float(projected[1])
-                    current[track_id] = (time, distance, c["ego_mps"], c["block"], c["lane"])
+                    current[track_id] = (time, distance, c["ego_mps"], c["block"], lane_id)
                     old = previous.get(track_id)
-                    if old and 0 < time - old[0] <= 0.5 and old[3:] == (c["block"], c["lane"]):
+                    if old and 0 < time - old[0] <= 0.5 and old[3:] == (c["block"], lane_id):
                         # Straight-road longitudinal model. Ground y is forward distance from camera.
                         speed = longitudinal_speed(distance, old[1], time-old[0], c["ego_mps"], old[2])
                         if speed >= -0.5:
-                            metric_tracks.append(Track(track_id, distance, max(0, speed), confidence))
+                            metric_tracks[lane_id].append(Track(track_id, distance, max(0, speed), confidence))
             previous = current
-            state, camera = judge.evaluate(time, metric_tracks, c)
-            if c is None:
-                state = "VEHICLES_DETECTED" if count else "INSUFFICIENT_DATA"
+            state, camera = "VEHICLES_DETECTED" if count else "INSUFFICIENT_DATA", None
+            lane_observations = []
+            for lane in lane_ids:
+                # Geometry labels are camera-relative. Mapping to a route turn requires explicit metadata.
+                is_target = c is not None and lane == c.get("auto_lane", "EGO")
+                lane_config = c if c and lane != "UNKNOWN" else None
+                if lane_config and not is_target:
+                    lane_config = {**c,"tail_visible":False,"full_block_visible":False}
+                judge = judges.setdefault(lane, QueueJudge())
+                lane_state, lane_camera = judge.evaluate(time, metric_tracks[lane],lane_config)
+                lane_observations.append(dict(laneId=lane, vehicleCount=sum(a["laneId"]==lane for a in assignments),
+                                              state=lane_state, speedAvailable=bool(metric_tracks[lane])))
+                if is_target:
+                    state,camera = lane_state,lane_camera
+            for missing_lane in set(judges)-set(lane_ids):
+                judges[missing_lane].evaluate(time,[],None)
             if time - last_emitted >= 0.9:
                 observations.append({"offsetMs": round(time * 1000), "origin": origin, "node": args.node,
                                      "sequence": len(observations) + 1, "visionState": state,
-                                     "vehicleCount": count, "camera": camera})
+                                     "vehicleCount": count, "camera": camera, "laneObservations":lane_observations})
+                lane_frames.append(dict(offsetMs=round(time*1000), sceneCut=bool(cut), vehicles=assignments,
+                                        lanes=lane_observations, egoBoundariesFound=geometry.ego_pair is not None))
                 last_emitted = time
-            annotated = result.plot()
+            annotated = geometry.draw(result.plot())
+            for assignment in assignments:
+                x1,y1,x2,y2 = assignment["box"]
+                cv2.putText(annotated,assignment["laneId"],(int(x1),min(height-5,int(y2)+16)),
+                            cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,255),1)
             cv2.putText(annotated, f"{time:.1f}s  vehicles={count}  {state}", (10, 28),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             if writer is None:
@@ -136,10 +180,14 @@ def analyze(args):
         raise ValueError("No frames analyzed")
     replay = {"version": 1, "kind": "YOLO_VIDEO", "observations": observations}
     (output / "replay.json").write_text(json.dumps(replay, ensure_ascii=False, allow_nan=False), encoding="utf-8")
+    (output / "lane-analysis.json").write_text(json.dumps(lane_frames, allow_nan=False),encoding="utf-8")
     summary = {"model": args.model, "tracker": "BoT-SORT", "videoSha256": digest,
                "detectedFrames": detected_frames, "maximumVehicles": maximum_vehicles,
                "observations": len(observations), "metricObservations": sum(o["camera"] is not None for o in observations),
                "states": sorted(set(o["visionState"] for o in observations))}
+    summary["laneModel"] = "YOLOP 640 ONNX"
+    summary["assignedVehicleObservations"] = sum(a["laneId"] != "UNKNOWN" for f in lane_frames for a in f["vehicles"])
+    summary["totalVehicleObservations"] = sum(len(f["vehicles"]) for f in lane_frames)
     (output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
 
@@ -151,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--config")
     parser.add_argument("--node", choices=["V1", "V2", "V3", "V4"], default="V4")
     parser.add_argument("--model", default=".tools/vision-data/yolo11n.pt")
+    parser.add_argument("--lane-model", default=".tools/vision-data/yolop-640-640.onnx")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seconds", type=float, default=60)
     args = parser.parse_args()

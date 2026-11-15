@@ -1,0 +1,32 @@
+{
+  "method": "Assistant visual annotations on raw frames; small purposive sample, not independent benchmark ground truth",
+  "sources": {
+    "kitti": ".tools/vision-data/driving.mp4",
+    "continuous": ".tools/vision-data/yolop-driving.mp4"
+  },
+  "vehicles": [
+    {"source":"kitti","time":0,"point":[565,208],"expected":"EGO"},
+    {"source":"kitti","time":0,"point":[456,227],"expected":"OTHER"},
+    {"source":"kitti","time":3,"point":[556,210],"expected":"EGO"},
+    {"source":"kitti","time":3,"point":[485,231],"expected":"OTHER"},
+    {"source":"kitti","time":6,"point":[603,247],"expected":"EGO"},
+    {"source":"kitti","time":6,"point":[405,276],"expected":"OTHER"},
+    {"source":"kitti","time":6,"point":[940,352],"expected":"OTHER"},
+    {"source":"kitti","time":9,"point":[661,274],"expected":"EGO"},
+    {"source":"kitti","time":9,"point":[337,354],"expected":"OTHER"},
+    {"source":"kitti","time":12,"point":[835,273],"expected":"EGO"},
+    {"source":"kitti","time":12,"point":[709,228],"expected":"OTHER"},
+    {"source":"kitti","time":15,"point":[606,244],"expected":"EGO"},
+    {"source":"kitti","time":15,"point":[310,271],"expected":"OTHER"},
+    {"source":"continuous","time":0,"point":[930,694],"expected":"EGO"},
+    {"source":"continuous","time":0,"point":[640,790],"expected":"OTHER"},
+    {"source":"continuous","time":0,"point":[300,930],"expected":"OTHER"},
+    {"source":"continuous","time":5,"point":[985,685],"expected":"EGO"},
+    {"source":"continuous","time":5,"point":[695,770],"expected":"OTHER"},
+    {"source":"continuous","time":5,"point":[485,830],"expected":"OTHER"}
+  ],
+  "queue_review": [
+    {"source":"continuous","from":0,"to":8,"lane":"LEFT_1","visual":"VISIBLE_DENSE_QUEUE","speed_ground_truth":null,"note":"Multiple cars form a queue to the left. No synchronized speed or distance telemetry is supplied."},
+    {"source":"kitti","from":0,"to":3,"lane":"EGO","visual":"NO_VISIBLE_THREE_VEHICLE_QUEUE","speed_ground_truth":null,"note":"Cannot convert visual absence of a queue to verified free flow."}
+  ]
+}
