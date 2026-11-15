@@ -1,0 +1,149 @@
+{
+  "method": "Visual labels fixed on four further frames before the second refinement; same source clips, not an independent road benchmark. Partially visible/boundary-ambiguous vehicles are excluded.",
+  "sources": {
+    "kitti": ".tools/vision-data/driving.mp4",
+    "continuous": ".tools/vision-data/yolop-driving.mp4"
+  },
+  "vehicles": [
+    {
+      "source": "kitti",
+      "time": 4.5,
+      "point": [
+        550,
+        194
+      ],
+      "expected": "EGO",
+      "exact": "EGO"
+    },
+    {
+      "source": "kitti",
+      "time": 4.5,
+      "point": [
+        467,
+        204
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        641,
+        275
+      ],
+      "expected": "EGO",
+      "exact": "EGO"
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        525,
+        225
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        854,
+        232
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        927,
+        681
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        898,
+        607,
+        958,
+        683
+      ]
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        220,
+        958
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        574,
+        791
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        743,
+        751
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        931,
+        664
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        907,
+        599,
+        958,
+        666
+      ]
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        275,
+        925
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        642,
+        780
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        794,
+        724
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    }
+  ],
+  "queue_review": []
+}

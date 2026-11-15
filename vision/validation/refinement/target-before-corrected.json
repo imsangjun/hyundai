@@ -1,0 +1,372 @@
+{
+  "method": "Assistant visual labels fixed before improved-model inference. Additional frames from the same two clips, not an independent driving dataset. Exact labels limited to visibly supported EGO/LEFT_1; OTHER includes opposing/parked vehicles. Revision 2: full-box reference matching added for distant buses after discovering foreground-car substitution in point-only matching.",
+  "engine": "hybrid-v1",
+  "model": ".tools/vision-data/yolo11n.pt",
+  "imgsz": 960,
+  "samples": 17,
+  "assigned": 8,
+  "correct": 8,
+  "wrong": 0,
+  "unknown": 7,
+  "missedVehicle": 2,
+  "assignmentCoverage": 0.47058823529411764,
+  "conditionalAccuracy": 1.0,
+  "exactLaneSamples": 11,
+  "exactLaneCorrect": 7,
+  "provisionalAssigned": 0,
+  "rows": [
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        568,
+        205
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        548.3096923828125,
+        175.30368041992188,
+        586.6767578125,
+        207.90145874023438
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        394,
+        275
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        327.93853759765625,
+        188.98831176757812,
+        469.27496337890625,
+        279.021240234375
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        502,
+        207
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        484.9498596191406,
+        180.4037322998047,
+        518.4134521484375,
+        206.37179565429688
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        622,
+        251
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "predicted": "EGO",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "EGO",
+      "correct": true,
+      "matchedBox": [
+        581.3463745117188,
+        182.47625732421875,
+        665.3731689453125,
+        253.1045684814453
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        454,
+        275
+      ],
+      "expected": "OTHER",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        394.64923095703125,
+        184.07237243652344,
+        520.5786743164062,
+        277.451171875
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        782,
+        286
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        720.6935424804688,
+        188.15469360351562,
+        845.4891967773438,
+        289.3828125
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        787,
+        256
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        738.25390625,
+        178.0665283203125,
+        831.5921630859375,
+        259.5635986328125
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        320,
+        302
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        201.32835388183594,
+        188.00437927246094,
+        437.08282470703125,
+        296.72998046875
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        573,
+        236
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        515.9343872070312,
+        165.64434814453125,
+        635.8837890625,
+        240.5745391845703
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        932,
+        690
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        900,
+        609,
+        962,
+        693
+      ],
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false,
+      "matchedBox": null,
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        504,
+        841
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        342.71258544921875,
+        636.90576171875,
+        663.6055297851562,
+        845.532470703125
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        673,
+        763
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        604.615478515625,
+        631.813720703125,
+        756.1064453125,
+        774.396484375
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        769,
+        744
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        732.96240234375,
+        657.5506591796875,
+        812.6416015625,
+        744.7847900390625
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        928,
+        675
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        898,
+        604,
+        959,
+        675
+      ],
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false,
+      "matchedBox": null,
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        342,
+        880
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        136.7952880859375,
+        585.2191772460938,
+        595.6162719726562,
+        884.3389282226562
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        652,
+        780
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        580.1925659179688,
+        654.6693115234375,
+        752.2288208007812,
+        781.458251953125
+      ],
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        790,
+        730
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        742.11767578125,
+        650.868896484375,
+        844.203369140625,
+        732.50732421875
+      ],
+      "diagnosis": {}
+    }
+  ]
+}

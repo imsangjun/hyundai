@@ -1,0 +1,16 @@
+{
+  "model": ".tools/vision-data/yolo11s.pt",
+  "tracker": "BoT-SORT",
+  "videoSha256": "1d5c8727af3f41c1082914110dc632f4d2a5f7ab114da8e682e185bb9363aabb",
+  "detectedFrames": 166,
+  "maximumVehicles": 16,
+  "observations": 18,
+  "metricObservations": 0,
+  "states": [
+    "VEHICLES_DETECTED"
+  ],
+  "laneModel": "hybrid",
+  "vehicleImageSize": 1280,
+  "assignedVehicleObservations": 21,
+  "totalVehicleObservations": 138
+}

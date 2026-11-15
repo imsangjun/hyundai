@@ -1,0 +1,344 @@
+{
+  "method": "Visual labels fixed on four further frames before the second refinement; same source clips, not an independent road benchmark. Partially visible/boundary-ambiguous vehicles are excluded.",
+  "engine": "hybrid",
+  "model": ".tools/vision-data/yolo11s.pt",
+  "imgsz": 1280,
+  "samples": 13,
+  "assigned": 6,
+  "correct": 6,
+  "wrong": 0,
+  "unknown": 6,
+  "missedVehicle": 1,
+  "assignmentCoverage": 0.46153846153846156,
+  "conditionalAccuracy": 1.0,
+  "exactLaneSamples": 10,
+  "exactLaneCorrect": 5,
+  "provisionalAssigned": 0,
+  "rows": [
+    {
+      "source": "kitti",
+      "time": 4.5,
+      "point": [
+        550,
+        194
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "predicted": "EGO",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "EGO",
+      "correct": true,
+      "matchedBox": [
+        533.1348266601562,
+        169.650634765625,
+        562.6248779296875,
+        194.87014770507812
+      ],
+      "diagnosis": {
+        "laneId": "EGO",
+        "reason": "PAINT_BOUNDARIES_RECOVERY",
+        "metricEligible": true
+      }
+    },
+    {
+      "source": "kitti",
+      "time": 4.5,
+      "point": [
+        467,
+        204
+      ],
+      "expected": "OTHER",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        447.1378173828125,
+        172.79083251953125,
+        487.1134338378906,
+        204.01937866210938
+      ],
+      "diagnosis": {
+        "laneId": "LEFT_1",
+        "reason": "PAINT_BOUNDARIES_RECOVERY",
+        "metricEligible": true
+      }
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        641,
+        275
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        586.8837890625,
+        180.7748565673828,
+        696.572021484375,
+        273.0011291503906
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "EGO_BOUNDARIES_MISSING",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        525,
+        225
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        495.1226501464844,
+        178.4467315673828,
+        560.0252075195312,
+        224.38389587402344
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "EGO_BOUNDARIES_MISSING",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "kitti",
+      "time": 10.5,
+      "point": [
+        854,
+        232
+      ],
+      "expected": "OTHER",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        772.5263671875,
+        158.03262329101562,
+        932.0198974609375,
+        233.8829803466797
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "EGO_BOUNDARIES_MISSING",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        927,
+        681
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        898,
+        607,
+        958,
+        683
+      ],
+      "predicted": "MISSED_VEHICLE",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "MISSED_VEHICLE",
+      "correct": false,
+      "matchedBox": null,
+      "diagnosis": {}
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        220,
+        958
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        1.140106201171875,
+        613.1176147460938,
+        513.5505981445312,
+        975.4365234375
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "OUTER_BOUNDARY_MISSING",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        574,
+        791
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        462.8641662597656,
+        622.0169677734375,
+        712.4154663085938,
+        797.7747802734375
+      ],
+      "diagnosis": {
+        "laneId": "LEFT_1",
+        "reason": "STRUCTURAL_BOUNDARIES",
+        "metricEligible": true
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 3.5,
+      "point": [
+        743,
+        751
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        686.1896362304688,
+        654.4993286132812,
+        797.6995239257812,
+        756.7042846679688
+      ],
+      "diagnosis": {
+        "laneId": "LEFT_1",
+        "reason": "STRUCTURAL_BOUNDARIES",
+        "metricEligible": true
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        931,
+        664
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        907,
+        599,
+        958,
+        666
+      ],
+      "predicted": "UNKNOWN",
+      "sideEvidence": "UNKNOWN",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        907.2921752929688,
+        603.2399291992188,
+        957.9124145507812,
+        670.240966796875
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "OUTSIDE_SUPPORTED_RANGE",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        275,
+        925
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "UNKNOWN",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "UNKNOWN",
+      "correct": false,
+      "matchedBox": [
+        1.531585693359375,
+        556.428466796875,
+        549.872314453125,
+        922.0682983398438
+      ],
+      "diagnosis": {
+        "laneId": "UNKNOWN",
+        "reason": "OUTER_BOUNDARY_MISSING",
+        "metricEligible": false
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        642,
+        780
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        538.32275390625,
+        646.37841796875,
+        747.8629760742188,
+        780.8516235351562
+      ],
+      "diagnosis": {
+        "laneId": "LEFT_1",
+        "reason": "STRUCTURAL_BOUNDARIES",
+        "metricEligible": true
+      }
+    },
+    {
+      "source": "continuous",
+      "time": 8,
+      "point": [
+        794,
+        724
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1",
+      "predicted": "LEFT_1",
+      "sideEvidence": "LEFT_OF_EGO",
+      "coarsePrediction": "OTHER",
+      "correct": true,
+      "matchedBox": [
+        739.9234008789062,
+        643.1710815429688,
+        848.8312377929688,
+        728.9874877929688
+      ],
+      "diagnosis": {
+        "laneId": "LEFT_1",
+        "reason": "STRUCTURAL_BOUNDARIES",
+        "metricEligible": true
+      }
+    }
+  ]
+}

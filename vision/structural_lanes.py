@@ -127,16 +127,104 @@ class StructuralLaneDetector:
 
 
 class HybridLaneDetector:
-    """Use paint segmentation only when structural ego geometry is unavailable."""
-    def __init__(self, structural_path, segmentation_path):
+    """Fuse compatible geometry per vehicle instead of discarding a whole model."""
+    def __init__(self, structural_path, segmentation_path, fuse=True):
         from lanes import LaneDetector
         self.structural = StructuralLaneDetector(structural_path)
         self.segmentation = LaneDetector(segmentation_path)
+        self.fuse = fuse
 
     def detect(self, frame):
         geometry = self.structural.detect(frame)
         geometry.source = 'UFLDv2'
+        if self.fuse:
+            return FusedGeometry(geometry,self.segmentation.detect(frame))
         if geometry.ego_pair is None:
             geometry = self.segmentation.detect(frame)
             geometry.source = 'YOLOP_FALLBACK'
         return geometry
+
+
+class FusedGeometry:
+    def __init__(self, structural, painted):
+        self.structural,self.painted = structural,painted
+        self.source = 'PER_VEHICLE_FUSION'
+        self.ego_pair = structural.ego_pair if structural.ego_pair is not None else painted.ego_pair
+        self.boundaries = structural.boundaries if structural.ego_pair is not None else painted.boundaries
+        self.compatible = self._compatible()
+
+    def _compatible(self):
+        u,s = self.structural,self.painted
+        if u.ego_pair is None or s.ego_pair is None:
+            return False
+        ua,ub=u.slots[1:3]; sa,sb=s.boundaries[s.ego_pair:s.ego_pair+2]
+        top=max(ua.top,ub.top,sa.top,sb.top,.65)
+        bottom=min(ua.bottom,ub.bottom,sa.bottom,sb.bottom,.9)
+        return bottom-top>=.1 and all(abs(ua.x(y)-sa.x(y))<.04 and abs(ub.x(y)-sb.x(y))<.04
+                                     for y in np.linspace(top,bottom,5))
+
+    def explain(self, point):
+        u,s = self.structural,self.painted
+        up,sp = u.assign(point),s.assign(point)
+        if up!='UNKNOWN':
+            if self.compatible and sp!='UNKNOWN' and up!=sp:
+                return {'laneId':'UNKNOWN','reason':'MODEL_DISAGREEMENT','metricEligible':False}
+            return {'laneId':up,'reason':'STRUCTURAL_BOUNDARIES','metricEligible':True}
+        if sp!='UNKNOWN' and (u.ego_pair is None or self.compatible):
+            return {'laneId':sp,'reason':'PAINT_BOUNDARIES_RECOVERY','metricEligible':True}
+        extension=self._short_extension(point)
+        if extension!='UNKNOWN':
+            return {'laneId':extension,'reason':'SHORT_RANGE_SUPPORTED_RECOVERY','metricEligible':False}
+        if u.ego_pair is None and s.ego_pair is None:
+            reason='EGO_BOUNDARIES_MISSING'
+        elif u.ego_pair is not None and not u.valid_pair(1,point[1]):
+            reason='OUTSIDE_SUPPORTED_RANGE'
+        elif u.side(point)!='UNKNOWN':
+            reason='OUTER_BOUNDARY_MISSING'
+        else:
+            reason='BOUNDARY_AMBIGUOUS'
+        return {'laneId':'UNKNOWN','reason':reason,'metricEligible':False}
+
+    def _short_extension(self, point):
+        """Provisional ego-only estimate across a small occlusion; never metric evidence."""
+        u,s=self.structural,self.painted
+        if u.ego_pair is None:
+            return 'UNKNOWN'
+        a,b=u.slots[1:3]; x,y=point
+        gaps=[max(0,boundary.top-y) for boundary in (a,b)]
+        if not 0<max(gaps)<=.03 or min(gaps)>.01 or y>=min(a.bottom,b.bottom):
+            return 'UNKNOWN'
+        if not .025<b.x(y)-a.x(y)<.8 or not 0<=a.x(y)<b.x(y)<=1:
+            return 'UNKNOWN'
+        # Reject an unstable continuation using the tangent/curve discrepancy.
+        for boundary,gap in zip((a,b),gaps):
+            tangent=boundary.x(boundary.top)+np.polyval(np.polyder(boundary.coefficients),boundary.top)*(y-boundary.top)
+            if gap and abs(tangent-boundary.x(y))>.003:
+                return 'UNKNOWN'
+        margin=max(.008,(b.x(y)-a.x(y))*.08)
+        if not a.x(y)+margin<x<b.x(y)-margin:
+            return 'UNKNOWN'
+        # At least one actual paint trace must corroborate a structural boundary at this row.
+        corroborated=any(p.top-.02<=y<=p.bottom and abs(p.x(y)-edge.x(y))<.015
+                         for p in s.boundaries for edge in (a,b))
+        return 'EGO' if corroborated else 'UNKNOWN'
+
+    def assign(self, point):
+        return self.explain(point)['laneId']
+
+    def side(self, point):
+        side=self.structural.side(point)
+        if side!='UNKNOWN':
+            return side
+        s=self.painted
+        if s.ego_pair is not None and (self.structural.ego_pair is None or self.compatible):
+            a,b=s.boundaries[s.ego_pair:s.ego_pair+2]
+            x,y=point
+            if s._valid_pair(a,b,y):
+                if x<a.x(y)-.008: return 'LEFT_OF_EGO'
+                if x>b.x(y)+.008: return 'RIGHT_OF_EGO'
+        return 'UNKNOWN'
+
+    def draw(self, frame):
+        # Show both evidence sources; painted recovery can reach beyond the structural range.
+        return self.structural.draw(self.painted.draw(frame))

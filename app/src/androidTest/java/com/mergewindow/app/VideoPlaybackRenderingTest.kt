@@ -41,6 +41,7 @@ class VideoPlaybackRenderingTest {
             assertTrue(js("state.prepareAt === null && state.high === null") == "true")
             assertTrue(js("document.querySelector('.demo-tag').textContent === 'YOLO 영상 관측'") == "true")
             assertTrue(js("state.v2xStatus.includes('내 차로') && state.v2xStatus.includes('판단 보류')") == "true")
+            assertTrue(js("state.v2xStatus.includes('잠정 배정')") == "true")
             waitFor("state.v2xStatus.includes('차량 밀집 후보 · 속도 미확인')")
             assertTrue(js("state.prepareAt === null && state.high === null") == "true")
         }

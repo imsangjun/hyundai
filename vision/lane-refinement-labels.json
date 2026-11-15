@@ -1,0 +1,186 @@
+{
+  "method": "Assistant visual labels fixed before improved-model inference. Additional frames from the same two clips, not an independent driving dataset. Exact labels limited to visibly supported EGO/LEFT_1; OTHER includes opposing/parked vehicles. Revision 2: full-box reference matching added for distant buses after discovering foreground-car substitution in point-only matching.",
+  "sources": {
+    "kitti": ".tools/vision-data/driving.mp4",
+    "continuous": ".tools/vision-data/yolop-driving.mp4"
+  },
+  "vehicles": [
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        568,
+        205
+      ],
+      "expected": "EGO",
+      "exact": "EGO"
+    },
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        394,
+        275
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 1.5,
+      "point": [
+        502,
+        207
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        622,
+        251
+      ],
+      "expected": "EGO",
+      "exact": "EGO"
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        454,
+        275
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 7.5,
+      "point": [
+        782,
+        286
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        787,
+        256
+      ],
+      "expected": "EGO",
+      "exact": "EGO"
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        320,
+        302
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "kitti",
+      "time": 13.5,
+      "point": [
+        573,
+        236
+      ],
+      "expected": "OTHER"
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        932,
+        690
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        900,
+        609,
+        962,
+        693
+      ]
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        504,
+        841
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        673,
+        763
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 2,
+      "point": [
+        769,
+        744
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        928,
+        675
+      ],
+      "expected": "EGO",
+      "exact": "EGO",
+      "referenceBox": [
+        898,
+        604,
+        959,
+        675
+      ]
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        342,
+        880
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        652,
+        780
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    },
+    {
+      "source": "continuous",
+      "time": 7,
+      "point": [
+        790,
+        730
+      ],
+      "expected": "OTHER",
+      "exact": "LEFT_1"
+    }
+  ],
+  "queue_review": []
+}

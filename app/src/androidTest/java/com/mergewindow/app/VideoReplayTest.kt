@@ -81,4 +81,22 @@ class VideoReplayTest {
         })
         assertThrows(IllegalArgumentException::class.java) { VideoReplay(json.toString(),1000) }
     }
+
+    @Test fun provisionalAssignmentsAreExplicitAndValidated() {
+        val json=fixture()
+        val entries=json.getJSONArray("observations")
+        for(i in 0 until entries.length()) {
+            val record=entries.getJSONObject(i)
+            record.put("camera",JSONObject.NULL).put("visionState","VEHICLES_DETECTED")
+            record.getJSONArray("laneObservations").getJSONObject(0)
+                .put("provisionalCount",1).put("state","INSUFFICIENT_DATA")
+        }
+        val network=V2xSimulation().apply { syntheticSources=false }
+        VideoReplay(json.toString(),1000).tick(1000,network)
+        network.tick(1500)
+        assertTrue(network.status(1500).contains("잠정 배정 1대"))
+        assertNull(network.estimate(0,1500).low)
+        entries.getJSONObject(0).getJSONArray("laneObservations").getJSONObject(0).put("provisionalCount",4)
+        assertThrows(IllegalArgumentException::class.java) { VideoReplay(json.toString(),1000) }
+    }
 }

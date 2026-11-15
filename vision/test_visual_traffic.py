@@ -39,5 +39,12 @@ class VisualDensityTest(unittest.TestCase):
         for step in range(70):
             self.assertEqual('INSUFFICIENT_DATA',judge.evaluate(step/10,boxes,'LEFT_1'))
 
+    def test_provisional_geometry_cannot_supply_density_evidence(self):
+        boxes=vehicles()
+        boxes[-1]['metricEligible']=False
+        judge=VisualDensityJudge()
+        for step in range(70):
+            self.assertEqual('INSUFFICIENT_DATA',judge.evaluate(step/10,boxes,'LEFT_1'))
+
 
 if __name__=='__main__': unittest.main()

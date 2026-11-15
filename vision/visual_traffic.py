@@ -8,7 +8,8 @@ class VisualDensityJudge:
 
     def evaluate(self, time, vehicles, lane):
         # UNKNOWN can contain several lanes/opposing/parked cars and must never be pooled.
-        by_id = {v['id']:v['box'] for v in vehicles if v['laneId']==lane and v['confidence']>=.5 and v['id']>=0}
+        by_id = {v['id']:v['box'] for v in vehicles if v['laneId']==lane and v['confidence']>=.5 and v['id']>=0
+                 and v.get('metricEligible',True)}
         boxes = list(by_id.values())
         boxes.sort(key=lambda b:b[3])
         group,maximum = 1,1

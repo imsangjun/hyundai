@@ -49,8 +49,10 @@ class VideoReplay(text: String, private val startedAt: Long) {
                 val lane = lanes.getJSONObject(i)
                 val id = lane.getString("laneId")
                 val vehicles = lane.getInt("vehicleCount")
+                val provisional = lane.optInt("provisionalCount",0)
                 val laneState = lane.getString("state")
                 require(id.matches(Regex("EGO|UNKNOWN|LEFT_[1-9]|RIGHT_[1-9]")) && vehicles in 0..1000)
+                require(provisional in 0..vehicles && (id != "UNKNOWN" || provisional == 0))
                 val stateLabel = when(laneState) {
                     "INSUFFICIENT_DATA" -> "판단 보류"
                     "OBSERVING" -> "관측 중"
@@ -60,7 +62,8 @@ class VideoReplay(text: String, private val startedAt: Long) {
                     else -> throw IllegalArgumentException("Unknown lane state")
                 }
                 val laneLabel = when(id) { "EGO" -> "내 차로"; "UNKNOWN" -> "차로 미확정"; else -> id }
-                "$laneLabel ${vehicles}대 $stateLabel"
+                val provisionalLabel = if(provisional>0) " · 잠정 배정 ${provisional}대" else ""
+                "$laneLabel ${vehicles}대 $stateLabel$provisionalLabel"
             }
             Record(offset,node,origin,sequence,state,count,camera,laneSummary)
         }

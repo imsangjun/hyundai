@@ -108,7 +108,7 @@ def analyze(args):
                         tracker.reset()
             geometry = lane_model.detect(frame)
             result = model.track(frame, persist=True, tracker="botsort.yaml", classes=[2, 3, 5, 7],
-                                 conf=0.35, imgsz=args.imgsz, device=args.device, verbose=False)[0]
+                                 conf=0.35, imgsz=args.imgsz, device=args.device, verbose=False,agnostic_nms=True)[0]
             count = len(result.boxes)
             detected_frames += count > 0
             maximum_vehicles = max(maximum_vehicles, count)
@@ -120,7 +120,9 @@ def analyze(args):
                 point = ((box[0]+box[2])/(2*width),box[3]/height)
                 lane_id = geometry.assign(point)
                 side = geometry.side(point) if hasattr(geometry,'side') else 'UNKNOWN'
-                assignments.append(dict(id=track_id,box=box,confidence=confidence,laneId=lane_id,sideEvidence=side))
+                evidence=geometry.explain(point) if hasattr(geometry,'explain') else dict(
+                    laneId=lane_id,reason='PAINT_BOUNDARIES' if lane_id!='UNKNOWN' else 'GEOMETRY_UNAVAILABLE',metricEligible=lane_id!='UNKNOWN')
+                assignments.append(dict(id=track_id,box=box,confidence=confidence,sideEvidence=side,**evidence))
             lane_ids = sorted(set(a["laneId"] for a in assignments) | {"EGO"})
             metric_tracks = {lane: [] for lane in lane_ids}
             current = {}
@@ -132,7 +134,7 @@ def analyze(args):
                     box,track_id,confidence = assignment["box"],assignment["id"],assignment["confidence"]
                     lane_id = assignment["laneId"]
                     point = ((box[0] + box[2]) / (2 * width), box[3] / height)
-                    if lane_id == "UNKNOWN" or track_id < 0:
+                    if lane_id == "UNKNOWN" or track_id < 0 or not assignment['metricEligible']:
                         continue
                     projected = cv2.perspectiveTransform(np.float32([[point]]), matrix)[0, 0]
                     distance = float(projected[1])
@@ -158,6 +160,7 @@ def analyze(args):
                 if lane_state == 'INSUFFICIENT_DATA' and visual_state == 'DENSE_TRAFFIC_CANDIDATE':
                     lane_state = visual_state
                 lane_observations.append(dict(laneId=lane, vehicleCount=sum(a["laneId"]==lane for a in assignments),
+                                              provisionalCount=sum(a['laneId']==lane and not a['metricEligible'] for a in assignments) if lane!='UNKNOWN' else 0,
                                               state=lane_state, speedAvailable=bool(metric_tracks[lane])))
                 if is_target:
                     state,camera = lane_state,lane_camera
@@ -178,6 +181,7 @@ def analyze(args):
             for assignment in assignments:
                 x1,y1,x2,y2 = assignment["box"]
                 label = f"#{assignment['id']} {assignment['laneId']} {assignment['confidence']:.2f}"
+                if assignment['laneId']!='UNKNOWN' and not assignment['metricEligible']: label+=' (provisional)'
                 cv2.putText(annotated,label,(int(x1),min(height-5,int(y2)+16)),
                             cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,255),1)
             cv2.putText(annotated, f"{time:.1f}s  vehicles={count}  {state}", (10, 28),
@@ -218,11 +222,11 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True)
     parser.add_argument("--config")
     parser.add_argument("--node", choices=["V1", "V2", "V3", "V4"], default="V4")
-    parser.add_argument("--model", default=".tools/vision-data/yolo11n.pt")
+    parser.add_argument("--model", default=".tools/vision-data/yolo11s.pt")
     parser.add_argument("--lane-model", default=".tools/vision-data/yolop-640-640.onnx")
     parser.add_argument("--lane-engine", choices=['hybrid','yolop'],default='hybrid')
     parser.add_argument("--structural-model",default='.tools/vision-data/culane_res18.pth')
-    parser.add_argument("--imgsz",type=int,choices=[640,960,1280],default=960)
+    parser.add_argument("--imgsz",type=int,choices=[640,960,1280],default=1280)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seconds", type=float, default=60)
     args = parser.parse_args()

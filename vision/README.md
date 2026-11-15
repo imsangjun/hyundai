@@ -9,7 +9,7 @@
 .\Run-Vision.ps1 -Video 'C:\videos\driving.mp4' -Seconds 60 -InstallReplay
 ```
 
-앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 YOLO11n, 공식 YOLOP ONNX, UFLDv2 CULane ResNet18 가중치를 다운로드한다. UFLDv2 가중치는 약 825 MB다. YOLOP는 OpenCV DNN, UFLDv2는 PyTorch CPU로 실행한다. 모델 다운로드 외에 영상·위치를 외부로 전송하지 않는다.
+앱의 시연 설정에서 ‘YOLO 분석 결과 재생 / 다시 시작’을 누른다. 분석 결과는 기본적으로 verification/vision의 annotated.mp4, summary.json, replay.json에 저장한다. 영상은 로컬에서 처리하며 첫 실행 때 YOLO11s, 공식 YOLOP ONNX, UFLDv2 CULane ResNet18 가중치를 다운로드한다. UFLDv2 가중치는 약 825 MB다. YOLOP는 OpenCV DNN, UFLDv2는 PyTorch CPU로 실행한다. 모델 다운로드 외에 영상·위치를 외부로 전송하지 않는다.
 
 ```powershell
 # 거리/차로 보정 정보를 함께 사용
@@ -20,7 +20,7 @@
 
 ## 판단 로직
 
-YOLO11n은 입력 크기 960으로 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. UFLDv2가 차선 구조를 추정한다. 존재 점수 0.7, 유효 점 개수·곡선 잔차·교차·폭·범위 검사 후 경계를 사용한다. 내 차로 경계를 확보하지 못한 프레임은 YOLOP 차선·주행 가능 영역 분할로 대체한다. 이 점수는 실제 차로 정답 확률이 아니다. 누락 경계의 슬롯을 유지해 인접 차로 번호가 당겨지지 않게 한다. 좌우 경계가 확인된 영역에 차량 상자 하단 중앙점을 대응한다. EGO는 내 차로, LEFT_1/RIGHT_1은 화면상 인접 차로, UNKNOWN은 차로 미확정이다. 이 표기는 도로의 영구 차로 ID나 회전 전용 여부를 뜻하지 않는다. 경계가 없는 곳, 차선 위, 화면 하단에 잘린 차량은 미확정으로 남긴다.
+YOLO11s는 입력 크기 1280으로 car, motorcycle, bus, truck을 검출하고 BoT-SORT는 ID를 추적한다. UFLDv2가 차선 구조를 추정한다. 존재 점수 0.7, 유효 점 개수·곡선 잔차·교차·폭·범위 검사 후 경계를 사용한다. 매 프레임 YOLOP도 실행해 차량별로 근거를 결합한다. 두 모델의 내 차로 경계가 겹치는 구간에서 일치할 때 YOLOP로 누락 영역을 보완한다. 내 차로 경계를 전혀 확보하지 못한 구조 모델은 기존처럼 YOLOP로 대체한다. 이 점수는 실제 차로 정답 확률이 아니다. 누락 경계의 슬롯을 유지해 인접 차로 번호가 당겨지지 않게 한다. 좌우 경계가 확인된 영역에 차량 상자 하단 중앙점을 대응한다. EGO는 내 차로, LEFT_1/RIGHT_1은 화면상 인접 차로, UNKNOWN은 차로 미확정이다. 이 표기는 도로의 영구 차로 ID나 회전 전용 여부를 뜻하지 않는다. 경계가 없는 곳, 차선 위, 화면 하단에 잘린 차량은 미확정으로 남긴다. 예외적으로 한쪽 경계의 짧은 가림을 페인트 경계로 교차 확인할 수 있을 때에만 EGO 잠정 배정을 허용한다. 영상 높이 3% 이내의 연장, 반대 경계 1% 이내, 곡률·폭·접점 여유 검사를 모두 통과해야 한다. 잠정 배정은 metricEligible=false이며 속도·거리 계산과 밀집 후보 집계에서 제외한다. 앱에 잠정 배정 대수를 별도로 표시한다.
 
 보정된 지면 좌표의 전방 거리 변화율에 같은 시간의 자차 속도를 더해 차량 종방향 속도를 추정한다. 이 모델은 직선·국소 평면 도로와 정합된 카메라 자세를 전제로 한다. BoT-SORT의 영상 흔들림 보정 자체가 실제 미터 단위 자차 이동 보정은 아니다. 회전·경사·피칭에서는 시간별 보정이 필요하다.
 
@@ -99,3 +99,7 @@ lane-analysis.json에는 매 관측 시점의 차량 상자, 추적 ID, 자동 �
 
 - UFLDv2 공식 소스·모델: https://github.com/cfzd/Ultra-Fast-Lane-Detection-v2
 - 추론부 MIT 고지: [THIRD_PARTY_UFLD_LICENSE.txt](THIRD_PARTY_UFLD_LICENSE.txt)
+
+## 미확정 9건 추가 개선
+
+[UNKNOWN_REFINEMENT.md](UNKNOWN_REFINEMENT.md)에 9건별 원인과 두 번째 개선 결과를 기록했다. 현재 기본값은 YOLO11s/1280 + 차량별 차선 결합이다. 첫 개선 결과의 YOLO11n/960과 구분한다. `lane-analysis.json`은 차량별 `reason`, `metricEligible`, `sideEvidence`를 포함한다. 재생 JSON의 `provisionalCount`는 잠정 배정 수이며 기존 파일은 0으로 읽는다. 최신 시연 파일은 `verification/refinement/continuous/replay.json`이다.

@@ -41,7 +41,16 @@ if (-not $Replay) {
         }
         Move-Item -LiteralPath $download -Destination $structuralModel
     }
-    $analysisArgs = @('vision/analyze.py','--video',$Video,'--output',$Output,'--node',$Node,'--seconds',"$Seconds")
+    $vehicleModel = Join-Path $PSScriptRoot '.tools/vision-data/yolo11s.pt'
+    if (-not (Test-Path -LiteralPath $vehicleModel)) {
+        $download = "$vehicleModel.download"
+        Invoke-WebRequest 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11s.pt' -OutFile $download
+        if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne '85A76FE86DD8AFE384648546B56A7A78580C7CB7B404FC595F97969322D502D5') {
+            throw 'YOLO11s model checksum differs from the verified model.'
+        }
+        Move-Item -LiteralPath $download -Destination $vehicleModel
+    }
+    $analysisArgs = @('vision/analyze.py','--video',$Video,'--output',$Output,'--node',$Node,'--seconds',"$Seconds",'--model',$vehicleModel)
     if ($Config) { $analysisArgs += @('--config',$Config) }
     & $python @analysisArgs
     if ($LASTEXITCODE -ne 0) { throw 'Video analysis failed.' }
