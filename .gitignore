@@ -8,3 +8,7 @@ local.properties
 captures/
 verification/
 __pycache__/
+
+# Local application forms and generated media can contain personal information.
+/output/
+/tmp/
